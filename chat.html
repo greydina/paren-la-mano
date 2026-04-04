@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat - Paren la Mano Archivo</title>
+  <meta name="description" content="Chatea con el archivo de Paren la Mano. Busca programas por temas, invitados o momentos.">
+  <meta property="og:title" content="Chat - Paren la Mano Archivo">
+  <meta property="og:description" content="Busca programas de Paren la Mano usando inteligencia artificial.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127909;</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+  <nav class="navbar" aria-label="Navegacion principal">
+    <div class="navbar-inner">
+      <a href="index.html" class="navbar-brand">PLM <span>Archivo</span></a>
+      <button class="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="episodes.html">Programas</a></li>
+        <li><a href="historia.html">Historia</a></li>
+        <li><a href="chat.html" class="active">Chat</a></li>
+        <li><a href="ranking.html">Ranking</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="chat-page-wrapper">
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome">
+          <span class="welcome-icon">💬</span>
+          <h2>Archivo Inteligente</h2>
+          <p>Preguntame sobre cualquier programa de Paren la Mano</p>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="Ej: Messi, Superclasico, anecdotas..." autocomplete="off">
+        <button class="chat-send-btn" id="chat-send">Enviar</button>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-links">
+          <a href="index.html">Inicio</a>
+          <a href="episodes.html">Programas</a>
+          <a href="historia.html">Historia</a>
+          <a href="chat.html">Chat</a>
+          <a href="ranking.html">Ranking</a>
+          <a href="https://parenlamano.com" target="_blank" rel="noopener">Sitio Oficial</a>
+          <a href="https://www.youtube.com/@Vorterix" target="_blank" rel="noopener">YouTube</a>
+        </div>
+        <p>Archivo no oficial de <span class="accent">Paren la Mano</span>. Hecho por fans, para fans.</p>
+        <p class="footer-disclaimer">Paren la Mano es un programa de Vorterix. Todos los derechos pertenecen a sus respectivos duenos.</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    const API_URL = '/api/chat';
+    const messagesEl = document.getElementById('chat-messages');
+    const inputEl = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send');
+
+    let isWaiting = false;
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr + 'T00:00:00');
+      const months = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      return `${date.getDate()} de ${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function clearWelcome() {
+      const welcome = messagesEl.querySelector('.chat-welcome');
+      if (welcome) welcome.remove();
+    }
+
+    function addUserMessage(text) {
+      clearWelcome();
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble user';
+      bubble.textContent = text;
+      messagesEl.appendChild(bubble);
+      scrollToBottom();
+    }
+
+    function addBotMessage(answer, episodes) {
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble bot';
+
+      // Answer text
+      const answerDiv = document.createElement('div');
+      answerDiv.className = 'answer-text';
+      answerDiv.textContent = answer;
+      bubble.appendChild(answerDiv);
+
+      // Episode cards
+      if (episodes && episodes.length > 0) {
+        const cardsDiv = document.createElement('div');
+        cardsDiv.className = 'chat-episodes';
+
+        episodes.forEach(ep => {
+          const ytUrl = `https://www.youtube.com/watch?v=${ep.youtube_id}`;
+          const thumbUrl = `https://img.youtube.com/vi/${ep.youtube_id}/hqdefault.jpg`;
+
+          const card = document.createElement('a');
+          card.className = 'chat-episode-card';
+          card.href = ytUrl;
+          card.target = '_blank';
+          card.rel = 'noopener';
+
+          const numberHtml = ep.numero ? `<span class="ep-number">#${ep.numero}</span>` : '';
+          card.innerHTML = `
+            <div class="chat-episode-thumb">
+              <img src="${thumbUrl}" alt="${ep.titulo}" loading="lazy">
+            </div>
+            <div class="chat-episode-info">
+              ${numberHtml}
+              <span class="ep-title">${ep.titulo}</span>
+              <span class="ep-date">${formatDate(ep.fecha)}</span>
+              <span class="ep-desc">${ep.descripcion}</span>
+            </div>
+          `;
+          cardsDiv.appendChild(card);
+        });
+
+        bubble.appendChild(cardsDiv);
+      }
+
+      messagesEl.appendChild(bubble);
+      scrollToBottom();
+    }
+
+    function addLoadingIndicator() {
+      const loader = document.createElement('div');
+      loader.className = 'chat-loading';
+      loader.id = 'chat-loader';
+      loader.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+      messagesEl.appendChild(loader);
+      scrollToBottom();
+    }
+
+    function removeLoadingIndicator() {
+      const loader = document.getElementById('chat-loader');
+      if (loader) loader.remove();
+    }
+
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const query = inputEl.value.trim();
+      if (!query || isWaiting) return;
+
+      isWaiting = true;
+      sendBtn.disabled = true;
+      inputEl.value = '';
+
+      addUserMessage(query);
+      addLoadingIndicator();
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        removeLoadingIndicator();
+        addBotMessage(data.answer, data.episodes);
+      } catch (err) {
+        removeLoadingIndicator();
+        addBotMessage(
+          'No pude conectarme al servidor. Asegurate de que la API este corriendo en el puerto 8889.',
+          []
+        );
+        console.error('Chat error:', err);
+      } finally {
+        isWaiting = false;
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Focus input on load
+    inputEl.focus();
+  </script>
+</body>
+</html>

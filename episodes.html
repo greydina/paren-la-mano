@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programas - Paren la Mano Archivo</title>
+  <meta name="description" content="Archivo completo de programas de Paren la Mano. Busca, filtra y mira todos los episodios.">
+  <meta property="og:title" content="Programas - Paren la Mano Archivo">
+  <meta property="og:description" content="Archivo completo de programas de Paren la Mano.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127909;</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar" aria-label="Navegacion principal">
+    <div class="navbar-inner">
+      <a href="index.html" class="navbar-brand">PLM <span>Archivo</span></a>
+      <button class="nav-toggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="episodes.html" class="active">Programas</a></li>
+        <li><a href="historia.html">Historia</a></li>
+        <li><a href="chat.html">Chat</a></li>
+        <li><a href="ranking.html">Ranking</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="page-header">
+    <h1>Archivo de Programas</h1>
+    <p>Todos los programas de Paren la Mano en un solo lugar.</p>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="filter-bar">
+        <label for="search-input" class="sr-only">Buscar programas</label>
+        <input type="text" id="search-input" placeholder="Buscar por titulo, tema o numero...">
+        <label for="sort-select" class="sr-only">Ordenar programas</label>
+        <select id="sort-select">
+          <option value="newest">Mas recientes</option>
+          <option value="oldest">Mas antiguos</option>
+          <option value="number-desc">Numero (mayor a menor)</option>
+          <option value="number-asc">Numero (menor a mayor)</option>
+        </select>
+      </div>
+      <p class="results-count" id="results-count"></p>
+      <div class="episodes-grid" id="episodes-container"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Inicio</a>
+        <a href="episodes.html">Programas</a>
+        <a href="historia.html">Historia</a>
+        <a href="chat.html">Chat</a>
+        <a href="ranking.html">Ranking</a>
+        <a href="https://parenlamano.com" target="_blank" rel="noopener">Sitio Oficial</a>
+        <a href="https://www.youtube.com/@Vorterix" target="_blank" rel="noopener">YouTube</a>
+      </div>
+      <p>Archivo no oficial de <span class="accent">Paren la Mano</span>. Hecho por fans, para fans.</p>
+      <p class="footer-disclaimer">Paren la Mano es un programa de Vorterix. Todos los derechos pertenecen a sus respectivos duenos.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
