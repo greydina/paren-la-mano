@@ -11,10 +11,15 @@ import os
 import random
 import re
 import sqlite3
-import numpy as np
+import subprocess
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+
+import numpy as np
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
@@ -44,6 +49,12 @@ DATABASE_URL = os.environ.get(
     "postgresql://plm_user:plm_pass_2026@localhost:5432/plm_db",
 )
 KNOWN_SPEAKERS = ["Roberto", "Luquitas", "Joaquin", "German"]
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+TAGGING_DIR = DATA_DIR / "tagging"
+TAGS_FILE = TAGGING_DIR / "tags.json"
+DIARIZATION_DIR = DATA_DIR / "diarization"
+AUDIO_DIR = DATA_DIR / "audio"
+TAGGING_SPEAKERS = ["Luquitas", "Roberto", "Joaquin", "German", "Alfredo", "Otro"]
 # Patterns to detect speaker intent in Spanish queries (case-insensitive)
 _SPEAKER_PATTERNS = [
     r"(?:qu[eé]\s+dijo|dice|decia|comento|hablo|habl[oó]|opina|opino|opin[oó]|menciono|mencion[oó]|cont[oó]|conto)\s+(\w+)",
@@ -792,6 +803,294 @@ def get_episode_ratings(season: int, episode: int):
         count=len(rows),
         ratings=ratings,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tagging helpers
+# ---------------------------------------------------------------------------
+def _load_tags() -> list[dict]:
+    """Load existing tags from JSON file."""
+    if TAGS_FILE.exists():
+        with open(TAGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+def _save_tags(tags: list[dict]) -> None:
+    """Save tags to JSON file."""
+    TAGGING_DIR.mkdir(parents=True, exist_ok=True)
+    with open(TAGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tags, f, ensure_ascii=False, indent=2)
+
+
+def _sanitize_episode_id(episode_id: str) -> str:
+    """Reject episode IDs with path traversal characters."""
+    if ".." in episode_id or "/" in episode_id or "\\" in episode_id:
+        raise HTTPException(status_code=400, detail="Invalid episode ID")
+    return episode_id
+
+
+def _load_diarization(episode_id: str) -> dict | None:
+    """Load a diarization JSON for the given episode."""
+    episode_id = _sanitize_episode_id(episode_id)
+    path = DIARIZATION_DIR / f"{episode_id}.json"
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _log_to_mlflow(tags: list[dict]) -> None:
+    """Log tagging stats to MLflow (best-effort, non-blocking)."""
+    try:
+        import mlflow
+        mlflow.set_tracking_uri("http://localhost:5000")
+        mlflow.set_experiment("plm-speaker-tagging")
+        with mlflow.start_run(run_name="tagging-session"):
+            total = len(tags)
+            mlflow.log_metric("total_tagged", total)
+            # Per-speaker counts
+            speaker_counts: dict[str, int] = {}
+            agreements = 0
+            for t in tags:
+                sp = t.get("tagged_speaker", "Otro")
+                speaker_counts[sp] = speaker_counts.get(sp, 0) + 1
+                if t.get("tagged_speaker") == t.get("original_speaker"):
+                    agreements += 1
+            for sp, count in speaker_counts.items():
+                mlflow.log_metric(f"speaker_{sp}_count", count)
+            agreement_rate = agreements / total if total > 0 else 0
+            mlflow.log_metric("agreement_rate", round(agreement_rate, 4))
+            # Log tags file as artifact
+            mlflow.log_artifact(str(TAGS_FILE))
+    except Exception as exc:
+        print(f"MLflow logging failed (non-critical): {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tagging request models
+# ---------------------------------------------------------------------------
+class TagRequest(BaseModel):
+    episode_id: str
+    segment_index: int
+    speaker: str
+    start: float
+    end: float
+
+
+# ---------------------------------------------------------------------------
+# Tagging endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/tagging/episodes")
+def tagging_episodes():
+    """List available episodes with diarization data."""
+    results = []
+    for f in sorted(DIARIZATION_DIR.glob("*.json")):
+        if f.name == "speaker_profiles_ecapa.json":
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        results.append({
+            "episode_id": f.stem,
+            "segment_count": len(data.get("segments", [])),
+            "duration": data.get("duration"),
+            "num_speakers": data.get("num_speakers"),
+            "speaker_stats": data.get("speaker_stats", {}),
+        })
+    return results
+
+
+@app.get("/api/tagging/segments")
+def tagging_segments(
+    episode_id: str = Query(...),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+):
+    """Return paginated diarization segments for an episode."""
+    data = _load_diarization(episode_id)
+    if data is None:
+        raise HTTPException(404, f"No diarization found for episode {episode_id}")
+
+    segments = data["segments"]
+    total = len(segments)
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    page_segments = segments[start_idx:end_idx]
+
+    # Load existing tags to mark which segments are tagged
+    tags = _load_tags()
+    tagged_map: dict[str, dict[int, str]] = {}
+    for t in tags:
+        tagged_map.setdefault(t["episode_id"], {})[t["segment_index"]] = t["tagged_speaker"]
+
+    ep_tags = tagged_map.get(episode_id, {})
+    enriched = []
+    for i, seg in enumerate(page_segments):
+        idx = start_idx + i
+        enriched.append({
+            **seg,
+            "index": idx,
+            "tagged_speaker": ep_tags.get(idx),
+        })
+
+    return {
+        "episode_id": episode_id,
+        "segments": enriched,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total + per_page - 1) // per_page,
+    }
+
+
+@app.get("/api/tagging/audio/{episode_id}")
+def get_audio_clip(
+    episode_id: str,
+    start: float = Query(...),
+    end: float = Query(...),
+):
+    """Serve an audio clip extracted on-the-fly with ffmpeg."""
+    episode_id = _sanitize_episode_id(episode_id)
+    audio_path = AUDIO_DIR / f"{episode_id}.wav"
+    if not audio_path.exists():
+        raise HTTPException(404, f"Audio file not found for episode {episode_id}")
+
+    # Add 0.5s padding before/after
+    clip_start = max(0, start - 0.5)
+    duration = (end - clip_start) + 0.5
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp_path = tmp.name
+    tmp.close()
+
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", str(audio_path),
+                "-ss", str(clip_start),
+                "-t", str(duration),
+                "-ar", "16000", "-ac", "1",
+                tmp_path,
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            os.unlink(tmp_path)
+            raise HTTPException(500, f"ffmpeg failed: {result.stderr.decode()[:200]}")
+
+        # Use background task to clean up temp file after response is sent
+        from starlette.background import BackgroundTask
+
+        def cleanup():
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        return FileResponse(
+            tmp_path,
+            media_type="audio/wav",
+            background=BackgroundTask(cleanup),
+        )
+    except subprocess.TimeoutExpired:
+        os.unlink(tmp_path)
+        raise HTTPException(504, "ffmpeg timed out")
+
+
+@app.post("/api/tagging/tag")
+def submit_tag(req: TagRequest):
+    """Submit a speaker tag for a diarization segment."""
+    if req.speaker not in TAGGING_SPEAKERS:
+        raise HTTPException(400, f"Unknown speaker: {req.speaker}. Must be one of {TAGGING_SPEAKERS}")
+
+    # Verify episode exists
+    data = _load_diarization(req.episode_id)
+    if data is None:
+        raise HTTPException(404, f"No diarization found for episode {req.episode_id}")
+
+    segments = data["segments"]
+    if req.segment_index < 0 or req.segment_index >= len(segments):
+        raise HTTPException(400, f"Segment index {req.segment_index} out of range (0-{len(segments)-1})")
+
+    original_speaker = segments[req.segment_index].get("speaker", "unknown")
+
+    tags = _load_tags()
+
+    # Remove existing tag for this segment if any (allow re-tagging)
+    tags = [
+        t for t in tags
+        if not (t["episode_id"] == req.episode_id and t["segment_index"] == req.segment_index)
+    ]
+
+    tag_entry = {
+        "episode_id": req.episode_id,
+        "segment_index": req.segment_index,
+        "start": req.start,
+        "end": req.end,
+        "original_speaker": original_speaker,
+        "tagged_speaker": req.speaker,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    tags.append(tag_entry)
+    _save_tags(tags)
+
+    # Log to MLflow every 10 tags
+    if len(tags) % 10 == 0:
+        _log_to_mlflow(tags)
+
+    return {"success": True, "total_tagged": len(tags), "tag": tag_entry}
+
+
+@app.get("/api/tagging/stats")
+def tagging_stats():
+    """Return tagging progress statistics."""
+    tags = _load_tags()
+
+    # Total segments across all episodes
+    total_segments = 0
+    episode_totals: dict[str, int] = {}
+    for f in sorted(DIARIZATION_DIR.glob("*.json")):
+        if f.name == "speaker_profiles_ecapa.json":
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        count = len(data.get("segments", []))
+        episode_totals[f.stem] = count
+        total_segments += count
+
+    # Per-episode tagged counts
+    episode_tagged: dict[str, int] = {}
+    speaker_counts: dict[str, int] = {}
+    agreements = 0
+    for t in tags:
+        ep = t["episode_id"]
+        episode_tagged[ep] = episode_tagged.get(ep, 0) + 1
+        sp = t.get("tagged_speaker", "Otro")
+        speaker_counts[sp] = speaker_counts.get(sp, 0) + 1
+        if t.get("tagged_speaker") == t.get("original_speaker"):
+            agreements += 1
+
+    total_tagged = len(tags)
+    agreement_rate = agreements / total_tagged if total_tagged > 0 else 0
+
+    episodes_stats = []
+    for ep_id, total in episode_totals.items():
+        tagged = episode_tagged.get(ep_id, 0)
+        episodes_stats.append({
+            "episode_id": ep_id,
+            "total_segments": total,
+            "tagged": tagged,
+            "progress": round(tagged / total * 100, 1) if total > 0 else 0,
+        })
+
+    return {
+        "total_segments": total_segments,
+        "total_tagged": total_tagged,
+        "progress_percent": round(total_tagged / total_segments * 100, 1) if total_segments > 0 else 0,
+        "agreement_rate": round(agreement_rate, 4),
+        "speaker_counts": speaker_counts,
+        "episodes": episodes_stats,
+    }
 
 
 # ---------------------------------------------------------------------------

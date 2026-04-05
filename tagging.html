@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speaker Tagging - Paren la Mano</title>
+  <meta name="description" content="Etiquetado de speakers para el dataset de diarizacion de Paren la Mano.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127908;</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* === TAGGING PAGE STYLES === */
+    .tagging-layout {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .tagging-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tagging-controls select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.7rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-family: var(--font-body);
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .tagging-controls select:focus {
+      outline: none;
+      border-color: var(--purple-bright);
+    }
+
+    /* Progress bar */
+    .progress-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .progress-header strong {
+      color: var(--purple-bright);
+      font-family: var(--font-heading);
+    }
+
+    .progress-bar-outer {
+      height: 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple-bright), var(--blue));
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    .stat-chip {
+      font-size: 0.78rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 12px;
+      background: rgba(183, 75, 236, 0.1);
+      border: 1px solid rgba(183, 75, 236, 0.2);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .stat-chip .count {
+      color: var(--purple-bright);
+      font-family: var(--font-heading);
+    }
+
+    /* Audio player */
+    .player-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+
+    .player-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .player-segment-label {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--white);
+      font-size: 1rem;
+    }
+
+    .player-time {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-family: var(--font-heading);
+    }
+
+    .player-auto-speaker {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    .player-auto-speaker strong {
+      color: var(--purple-bright);
+    }
+
+    audio {
+      width: 100%;
+      height: 40px;
+      margin-bottom: 1rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Speaker tag buttons */
+    .tag-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    .tag-btn {
+      padding: 0.7rem 0.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-align: center;
+      position: relative;
+    }
+
+    .tag-btn .shortcut {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-left: 0.3rem;
+      opacity: 0.7;
+    }
+
+    .tag-btn:hover {
+      border-color: var(--purple-bright);
+      background: rgba(183, 75, 236, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .tag-btn:active {
+      transform: translateY(0);
+    }
+
+    .tag-btn.selected {
+      border-color: var(--purple-bright);
+      background: var(--purple-bright);
+      color: var(--white);
+    }
+
+    /* Speaker colors */
+    .speaker-luquitas { --speaker-color: #4ecdc4; }
+    .speaker-roberto { --speaker-color: #ff6b6b; }
+    .speaker-joaquin { --speaker-color: #ffd93d; }
+    .speaker-german { --speaker-color: #6bcb77; }
+    .speaker-alfredo { --speaker-color: #4d96ff; }
+    .speaker-otro { --speaker-color: #9b59b6; }
+
+    .tag-btn.speaker-luquitas { border-color: #4ecdc4; }
+    .tag-btn.speaker-luquitas:hover, .tag-btn.speaker-luquitas.selected { background: #4ecdc4; color: #1a1a2e; border-color: #4ecdc4; }
+    .tag-btn.speaker-roberto { border-color: #ff6b6b; }
+    .tag-btn.speaker-roberto:hover, .tag-btn.speaker-roberto.selected { background: #ff6b6b; color: #1a1a2e; border-color: #ff6b6b; }
+    .tag-btn.speaker-joaquin { border-color: #ffd93d; }
+    .tag-btn.speaker-joaquin:hover, .tag-btn.speaker-joaquin.selected { background: #ffd93d; color: #1a1a2e; border-color: #ffd93d; }
+    .tag-btn.speaker-german { border-color: #6bcb77; }
+    .tag-btn.speaker-german:hover, .tag-btn.speaker-german.selected { background: #6bcb77; color: #1a1a2e; border-color: #6bcb77; }
+    .tag-btn.speaker-alfredo { border-color: #4d96ff; }
+    .tag-btn.speaker-alfredo:hover, .tag-btn.speaker-alfredo.selected { background: #4d96ff; color: #1a1a2e; border-color: #4d96ff; }
+    .tag-btn.speaker-otro { border-color: #9b59b6; }
+    .tag-btn.speaker-otro:hover, .tag-btn.speaker-otro.selected { background: #9b59b6; color: #fff; border-color: #9b59b6; }
+
+    /* Navigation buttons */
+    .nav-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-align: center;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--purple-bright);
+      color: var(--white);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Segment list */
+    .segments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .segment-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-size: 0.82rem;
+    }
+
+    .segment-item:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(183, 75, 236, 0.2);
+    }
+
+    .segment-item.active {
+      border-color: var(--purple-bright);
+      background: rgba(183, 75, 236, 0.12);
+    }
+
+    .segment-item.tagged {
+      border-left: 3px solid var(--tagged-color, var(--purple-bright));
+    }
+
+    .seg-num {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 2.5rem;
+      text-align: right;
+      font-size: 0.78rem;
+    }
+
+    .seg-time {
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-size: 0.78rem;
+      min-width: 7rem;
+    }
+
+    .seg-speaker {
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 8px;
+      background: rgba(183, 75, 236, 0.12);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .seg-tag-status {
+      margin-left: auto;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .seg-tagged-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+
+    .pagination button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .pagination button:hover:not(:disabled) {
+      border-color: var(--purple-bright);
+      color: var(--white);
+    }
+
+    .pagination button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .pagination .page-info {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-family: var(--font-heading);
+    }
+
+    /* Keyboard shortcuts help */
+    .shortcuts-help {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    .shortcuts-help kbd {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state h3 {
+      font-family: var(--font-heading);
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Loading */
+    .loading-spinner {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (min-width: 900px) {
+      .tagging-layout {
+        grid-template-columns: 320px 1fr;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 76px;
+        max-height: calc(100vh - 84px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+
+    @media (max-width: 899px) {
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .tag-buttons {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .shortcuts-help {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .tagging-layout {
+        padding: 0.75rem;
+      }
+
+      .tag-buttons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .segment-item {
+        padding: 0.5rem 0.6rem;
+        gap: 0.4rem;
+      }
+
+      .seg-time {
+        min-width: auto;
+        font-size: 0.72rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" aria-label="Navegacion principal">
+    <div class="navbar-inner">
+      <a href="index.html" class="navbar-brand">PLM <span>Archivo</span></a>
+      <button class="nav-toggle" aria-label="Menu" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="episodes.html">Programas</a></li>
+        <li><a href="historia.html">Historia</a></li>
+        <li><a href="chat.html">Chat</a></li>
+        <li><a href="ranking.html">Ranking</a></li>
+        <li><a href="tagging.html" class="active">Tagging</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="page-header">
+    <h1>Speaker <span style="color: var(--purple-bright)">Tagging</span></h1>
+    <p>Escucha segmentos y etiqueta al speaker correcto para mejorar la diarizacion</p>
+  </section>
+
+  <div class="tagging-layout">
+    <!-- Sidebar: player + controls -->
+    <div class="sidebar">
+      <div class="tagging-controls">
+        <select id="episode-select">
+          <option value="">Cargando episodios...</option>
+        </select>
+      </div>
+
+      <div class="progress-container" id="progress-container" style="display:none">
+        <div class="progress-header">
+          <span>Progreso</span>
+          <strong id="progress-text">0%</strong>
+        </div>
+        <div class="progress-bar-outer">
+          <div class="progress-bar-inner" id="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="stats-row" id="stats-row"></div>
+      </div>
+
+      <div class="player-section" id="player-section" style="display:none">
+        <div class="player-info">
+          <span class="player-segment-label" id="player-label">Segmento #--</span>
+          <span class="player-time" id="player-time">--:-- - --:--</span>
+        </div>
+        <div class="player-auto-speaker">
+          Auto-detectado: <strong id="player-auto-speaker">--</strong>
+        </div>
+        <audio id="audio-player" controls preload="none"></audio>
+        <div class="tag-buttons" id="tag-buttons">
+          <button class="tag-btn speaker-luquitas" data-speaker="Luquitas">Luquitas <span class="shortcut">1</span></button>
+          <button class="tag-btn speaker-roberto" data-speaker="Roberto">Roberto <span class="shortcut">2</span></button>
+          <button class="tag-btn speaker-joaquin" data-speaker="Joaquin">Joaquin <span class="shortcut">3</span></button>
+          <button class="tag-btn speaker-german" data-speaker="German">German <span class="shortcut">4</span></button>
+          <button class="tag-btn speaker-alfredo" data-speaker="Alfredo">Alfredo <span class="shortcut">5</span></button>
+          <button class="tag-btn speaker-otro" data-speaker="Otro">Otro <span class="shortcut">6</span></button>
+        </div>
+        <div class="nav-buttons">
+          <button class="nav-btn" id="btn-prev" disabled>Anterior</button>
+          <button class="nav-btn" id="btn-next" disabled>Siguiente</button>
+        </div>
+      </div>
+
+      <div class="shortcuts-help">
+        <strong>Atajos:</strong><br>
+        <kbd>1</kbd>-<kbd>6</kbd> Etiquetar speaker &nbsp;
+        <kbd>Space</kbd> Play/Pause &nbsp;
+        <kbd>R</kbd> Replay<br>
+        <kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> Navegar segmentos &nbsp;
+        <kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> Pagina ant/sig
+      </div>
+    </div>
+
+    <!-- Main content: segment list -->
+    <div class="main-content">
+      <div id="segments-container">
+        <div class="empty-state">
+          <h3>Selecciona un episodio</h3>
+          <p>Elegi un episodio del selector para ver los segmentos de diarizacion</p>
+        </div>
+      </div>
+      <div class="pagination" id="pagination" style="display:none">
+        <button id="page-prev" disabled>Anterior</button>
+        <span class="page-info" id="page-info">1 / 1</span>
+        <button id="page-next" disabled>Siguiente</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Inicio</a>
+        <a href="episodes.html">Programas</a>
+        <a href="chat.html">Chat</a>
+        <a href="ranking.html">Ranking</a>
+        <a href="tagging.html">Tagging</a>
+      </div>
+      <p>Paren la Mano <span class="accent">Archivo</span> — Hecho con amor por la comunidad</p>
+    </div>
+  </footer>
+
+  <script>
+    const API = 'http://' + window.location.hostname + ':8889';
+    const SPEAKERS = ['Luquitas', 'Roberto', 'Joaquin', 'German', 'Alfredo', 'Otro'];
+    const SPEAKER_COLORS = {
+      'Luquitas': '#4ecdc4',
+      'Roberto': '#ff6b6b',
+      'Joaquin': '#ffd93d',
+      'German': '#6bcb77',
+      'Alfredo': '#4d96ff',
+      'Otro': '#9b59b6',
+    };
+
+    // State
+    let currentEpisode = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let segments = [];
+    let activeSegmentIdx = -1; // index within current page
+    let episodes = [];
+
+    // DOM refs
+    const episodeSelect = document.getElementById('episode-select');
+    const progressContainer = document.getElementById('progress-container');
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+    const statsRow = document.getElementById('stats-row');
+    const playerSection = document.getElementById('player-section');
+    const playerLabel = document.getElementById('player-label');
+    const playerTime = document.getElementById('player-time');
+    const playerAutoSpeaker = document.getElementById('player-auto-speaker');
+    const audioPlayer = document.getElementById('audio-player');
+    const segmentsContainer = document.getElementById('segments-container');
+    const pagination = document.getElementById('pagination');
+    const pageInfo = document.getElementById('page-info');
+    const pagePrev = document.getElementById('page-prev');
+    const pageNext = document.getElementById('page-next');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const tagButtons = document.querySelectorAll('.tag-btn');
+
+    // --- Helpers ---
+    function fmtTime(sec) {
+      if (sec == null) return '--:--';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function speakerClass(name) {
+      const base = name.toLowerCase().replace(/[^a-z]/g, '');
+      if (base.startsWith('luquitas')) return 'luquitas';
+      if (base.startsWith('roberto')) return 'roberto';
+      if (base.startsWith('joaquin')) return 'joaquin';
+      if (base.startsWith('german')) return 'german';
+      if (base.startsWith('alfredo')) return 'alfredo';
+      return 'otro';
+    }
+
+    function speakerColor(name) {
+      const cls = speakerClass(name);
+      return SPEAKER_COLORS[SPEAKERS.find(s => s.toLowerCase() === cls)] || SPEAKER_COLORS['Otro'];
+    }
+
+    // --- API calls ---
+    async function fetchEpisodes() {
+      try {
+        const res = await fetch(API + '/api/tagging/episodes');
+        episodes = await res.json();
+        episodeSelect.innerHTML = '<option value="">-- Seleccionar episodio --</option>';
+        episodes.forEach(ep => {
+          const opt = document.createElement('option');
+          opt.value = ep.episode_id;
+          opt.textContent = ep.episode_id + ' (' + ep.segment_count + ' segmentos)';
+          episodeSelect.appendChild(opt);
+        });
+      } catch (e) {
+        episodeSelect.innerHTML = '<option value="">Error cargando episodios</option>';
+        console.error('Failed to load episodes:', e);
+      }
+    }
+
+    async function fetchSegments(episodeId, page) {
+      segmentsContainer.innerHTML = '<div class="loading-spinner">Cargando segmentos...</div>';
+      try {
+        const res = await fetch(API + '/api/tagging/segments?episode_id=' + encodeURIComponent(episodeId) + '&page=' + page + '&per_page=30');
+        const data = await res.json();
+        segments = data.segments;
+        totalPages = data.total_pages;
+        currentPage = data.page;
+        renderSegments();
+        renderPagination();
+      } catch (e) {
+        segmentsContainer.innerHTML = '<div class="empty-state"><h3>Error</h3><p>No se pudieron cargar los segmentos</p></div>';
+        console.error(e);
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(API + '/api/tagging/stats');
+        const data = await res.json();
+        renderStats(data);
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+    }
+
+    async function submitTag(speaker) {
+      if (activeSegmentIdx < 0 || !currentEpisode) return;
+      const seg = segments[activeSegmentIdx];
+      if (!seg) return;
+
+      try {
+        const res = await fetch(API + '/api/tagging/tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            episode_id: currentEpisode,
+            segment_index: seg.index,
+            speaker: speaker,
+            start: seg.start,
+            end: seg.end,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Update local state
+          seg.tagged_speaker = speaker;
+          renderSegments();
+          updateTagButtonState(speaker);
+          fetchStats();
+          // Auto-advance to next segment
+          if (activeSegmentIdx < segments.length - 1) {
+            selectSegment(activeSegmentIdx + 1);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to submit tag:', e);
+      }
+    }
+
+    // --- Rendering ---
+    function renderSegments() {
+      if (!segments.length) {
+        segmentsContainer.innerHTML = '<div class="empty-state"><h3>Sin segmentos</h3><p>No hay segmentos en esta pagina</p></div>';
+        return;
+      }
+
+      const list = document.createElement('div');
+      list.className = 'segments-list';
+
+      segments.forEach((seg, i) => {
+        const item = document.createElement('div');
+        item.className = 'segment-item';
+        if (i === activeSegmentIdx) item.classList.add('active');
+        if (seg.tagged_speaker) {
+          item.classList.add('tagged');
+          item.style.setProperty('--tagged-color', speakerColor(seg.tagged_speaker));
+        }
+
+        const num = document.createElement('span');
+        num.className = 'seg-num';
+        num.textContent = '#' + seg.index;
+
+        const time = document.createElement('span');
+        time.className = 'seg-time';
+        time.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
+
+        const speaker = document.createElement('span');
+        speaker.className = 'seg-speaker';
+        speaker.style.color = speakerColor(seg.speaker);
+        speaker.style.borderColor = speakerColor(seg.speaker);
+        speaker.style.background = speakerColor(seg.speaker) + '18';
+        speaker.textContent = seg.speaker;
+
+        const status = document.createElement('span');
+        status.className = 'seg-tag-status';
+        if (seg.tagged_speaker) {
+          const label = document.createElement('span');
+          label.className = 'seg-tagged-label';
+          label.style.background = speakerColor(seg.tagged_speaker) + '30';
+          label.style.color = speakerColor(seg.tagged_speaker);
+          label.textContent = seg.tagged_speaker;
+          status.appendChild(label);
+        }
+
+        item.appendChild(num);
+        item.appendChild(time);
+        item.appendChild(speaker);
+        item.appendChild(status);
+
+        item.addEventListener('click', () => selectSegment(i));
+        list.appendChild(item);
+      });
+
+      segmentsContainer.innerHTML = '';
+      segmentsContainer.appendChild(list);
+    }
+
+    function renderPagination() {
+      pagination.style.display = 'flex';
+      pageInfo.textContent = currentPage + ' / ' + totalPages;
+      pagePrev.disabled = currentPage <= 1;
+      pageNext.disabled = currentPage >= totalPages;
+    }
+
+    function renderStats(data) {
+      progressContainer.style.display = 'block';
+
+      // Find current episode stats
+      let epProgress = data.progress_percent;
+      let epTagged = data.total_tagged;
+      let epTotal = data.total_segments;
+
+      if (currentEpisode) {
+        const epStat = data.episodes.find(e => e.episode_id === currentEpisode);
+        if (epStat) {
+          epProgress = epStat.progress;
+          epTagged = epStat.tagged;
+          epTotal = epStat.total_segments;
+        }
+      }
+
+      progressText.textContent = epTagged + ' / ' + epTotal + ' (' + epProgress + '%)';
+      progressBar.style.width = epProgress + '%';
+
+      // Speaker counts
+      statsRow.innerHTML = '';
+      const counts = data.speaker_counts || {};
+      SPEAKERS.forEach(sp => {
+        if (counts[sp]) {
+          const chip = document.createElement('span');
+          chip.className = 'stat-chip';
+          chip.innerHTML = sp + ': <span class="count" style="color:' + (SPEAKER_COLORS[sp] || '#b74bec') + '">' + counts[sp] + '</span>';
+          statsRow.appendChild(chip);
+        }
+      });
+
+      if (data.total_tagged > 0) {
+        const agreeChip = document.createElement('span');
+        agreeChip.className = 'stat-chip';
+        agreeChip.innerHTML = 'Acuerdo: <span class="count">' + Math.round(data.agreement_rate * 100) + '%</span>';
+        statsRow.appendChild(agreeChip);
+      }
+    }
+
+    function updateTagButtonState(speaker) {
+      tagButtons.forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.speaker === speaker);
+      });
+    }
+
+    // --- Segment selection ---
+    function selectSegment(idx) {
+      if (idx < 0 || idx >= segments.length) return;
+      activeSegmentIdx = idx;
+      const seg = segments[idx];
+
+      // Update player
+      playerSection.style.display = 'block';
+      playerLabel.textContent = 'Segmento #' + seg.index;
+      playerTime.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
+      playerAutoSpeaker.textContent = seg.speaker;
+      playerAutoSpeaker.style.color = speakerColor(seg.speaker);
+
+      // Load audio
+      const audioUrl = API + '/api/tagging/audio/' + currentEpisode + '?start=' + seg.start + '&end=' + seg.end;
+      audioPlayer.src = audioUrl;
+      audioPlayer.load();
+      audioPlayer.play().catch(() => {});
+
+      // Update tag button state
+      updateTagButtonState(seg.tagged_speaker || '');
+
+      // Update nav buttons
+      btnPrev.disabled = activeSegmentIdx <= 0;
+      btnNext.disabled = activeSegmentIdx >= segments.length - 1;
+
+      // Update visual
+      renderSegments();
+
+      // Scroll active segment into view
+      setTimeout(() => {
+        const activeEl = segmentsContainer.querySelector('.segment-item.active');
+        if (activeEl) {
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }
+
+    // --- Event listeners ---
+    episodeSelect.addEventListener('change', (e) => {
+      const ep = e.target.value;
+      if (!ep) return;
+      currentEpisode = ep;
+      currentPage = 1;
+      activeSegmentIdx = -1;
+      playerSection.style.display = 'none';
+      fetchSegments(ep, 1);
+      fetchStats();
+    });
+
+    pagePrev.addEventListener('click', () => {
+      if (currentPage > 1) {
+        activeSegmentIdx = -1;
+        fetchSegments(currentEpisode, currentPage - 1);
+      }
+    });
+
+    pageNext.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        activeSegmentIdx = -1;
+        fetchSegments(currentEpisode, currentPage + 1);
+      }
+    });
+
+    btnPrev.addEventListener('click', () => {
+      if (activeSegmentIdx > 0) selectSegment(activeSegmentIdx - 1);
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (activeSegmentIdx < segments.length - 1) selectSegment(activeSegmentIdx + 1);
+    });
+
+    tagButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        submitTag(btn.dataset.speaker);
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Don't capture when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      switch (e.key) {
+        case '1': e.preventDefault(); submitTag('Luquitas'); break;
+        case '2': e.preventDefault(); submitTag('Roberto'); break;
+        case '3': e.preventDefault(); submitTag('Joaquin'); break;
+        case '4': e.preventDefault(); submitTag('German'); break;
+        case '5': e.preventDefault(); submitTag('Alfredo'); break;
+        case '6': e.preventDefault(); submitTag('Otro'); break;
+        case ' ':
+          e.preventDefault();
+          if (audioPlayer.paused) audioPlayer.play().catch(() => {});
+          else audioPlayer.pause();
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          audioPlayer.currentTime = 0;
+          audioPlayer.play().catch(() => {});
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (activeSegmentIdx > 0) selectSegment(activeSegmentIdx - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (activeSegmentIdx < segments.length - 1) selectSegment(activeSegmentIdx + 1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentPage > 1) {
+            activeSegmentIdx = -1;
+            fetchSegments(currentEpisode, currentPage - 1);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentPage < totalPages) {
+            activeSegmentIdx = -1;
+            fetchSegments(currentEpisode, currentPage + 1);
+          }
+          break;
+      }
+    });
+
+    // --- Init ---
+    fetchEpisodes();
+    fetchStats();
+  </script>
+
+</body>
+</html>
