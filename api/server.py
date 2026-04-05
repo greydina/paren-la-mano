@@ -843,29 +843,109 @@ def _load_diarization(episode_id: str) -> dict | None:
         return json.load(f)
 
 
-def _log_to_mlflow(tags: list[dict]) -> None:
-    """Log tagging stats to MLflow (best-effort, non-blocking)."""
+DATASET_DIR = DATA_DIR / "tagging" / "clips"
+
+# Persistent MLflow run ID for the tagging session
+_mlflow_run_id: str | None = None
+
+
+def _get_mlflow_client():
+    """Get MLflow client and ensure experiment exists."""
     try:
         import mlflow
         mlflow.set_tracking_uri("http://localhost:5000")
-        mlflow.set_experiment("plm-speaker-tagging")
-        with mlflow.start_run(run_name="tagging-session"):
-            total = len(tags)
-            mlflow.log_metric("total_tagged", total)
-            # Per-speaker counts
-            speaker_counts: dict[str, int] = {}
-            agreements = 0
-            for t in tags:
-                sp = t.get("tagged_speaker", "Otro")
-                speaker_counts[sp] = speaker_counts.get(sp, 0) + 1
-                if t.get("tagged_speaker") == t.get("original_speaker"):
-                    agreements += 1
-            for sp, count in speaker_counts.items():
-                mlflow.log_metric(f"speaker_{sp}_count", count)
-            agreement_rate = agreements / total if total > 0 else 0
-            mlflow.log_metric("agreement_rate", round(agreement_rate, 4))
-            # Log tags file as artifact
-            mlflow.log_artifact(str(TAGS_FILE))
+        client = mlflow.tracking.MlflowClient("http://localhost:5000")
+        exp = mlflow.set_experiment("plm-speaker-tagging")
+        return client, exp.experiment_id
+    except Exception as exc:
+        print(f"MLflow client failed: {exc}")
+        return None, None
+
+
+def _get_or_create_mlflow_run():
+    """Get or create a persistent MLflow run for tagging."""
+    global _mlflow_run_id
+    client, exp_id = _get_mlflow_client()
+    if not client:
+        return None, None
+    try:
+        if _mlflow_run_id:
+            return client, _mlflow_run_id
+        run = client.create_run(exp_id, run_name="tagging-dataset")
+        _mlflow_run_id = run.info.run_id
+        return client, _mlflow_run_id
+    except Exception as exc:
+        print(f"MLflow run creation failed: {exc}")
+        return None, None
+
+
+def _extract_and_save_clip(episode_id: str, start: float, end: float, tag: dict) -> str | None:
+    """Extract audio clip and save to dataset directory."""
+    audio_path = AUDIO_DIR / f"{episode_id}.wav"
+    if not audio_path.exists():
+        return None
+
+    DATASET_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Filename: {episode}_{segindex}_{speaker}.wav
+    speaker_safe = tag["tagged_speaker"].replace("/", "-").replace(" ", "_")
+    clip_name = f"{episode_id}_seg{tag['segment_index']}_{speaker_safe}.wav"
+    clip_path = DATASET_DIR / clip_name
+
+    pad_start = max(0, start - 0.3)
+    duration = (end - pad_start) + 0.3
+
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(audio_path),
+             "-ss", str(pad_start), "-t", str(duration),
+             "-ar", "16000", "-ac", "1", str(clip_path)],
+            capture_output=True, timeout=15,
+        )
+        return str(clip_path)
+    except Exception:
+        return None
+
+
+def _log_to_mlflow(tags: list[dict], new_tag: dict | None = None) -> None:
+    """Log tag + clip to MLflow dataset. One persistent run, incremental."""
+    try:
+        client, run_id = _get_or_create_mlflow_run()
+        if not client or not run_id:
+            return
+
+        total = len(tags)
+        client.log_metric(run_id, "total_tagged", total, step=total)
+
+        # Per-speaker counts
+        speaker_counts: dict[str, int] = {}
+        agreements = 0
+        for t in tags:
+            sp = t.get("tagged_speaker", "Otro")
+            base = sp.replace(" +ruido", "")
+            speaker_counts[base] = speaker_counts.get(base, 0) + 1
+            if t.get("tagged_speaker") == t.get("original_speaker"):
+                agreements += 1
+        for sp, count in speaker_counts.items():
+            safe_sp = sp.replace("/", "_").replace(" ", "_")
+            client.log_metric(run_id, f"speaker_{safe_sp}_count", count, step=total)
+
+        agreement_rate = agreements / total if total > 0 else 0
+        client.log_metric(run_id, "agreement_rate", round(agreement_rate, 4), step=total)
+
+        has_noise = sum(1 for t in tags if "+ruido" in t.get("tagged_speaker", ""))
+        client.log_metric(run_id, "with_noise_count", has_noise, step=total)
+
+        # Log the tags JSON
+        client.log_artifact(run_id, str(TAGS_FILE), artifact_path="dataset")
+
+        # If a new clip was extracted, log it organized by speaker
+        if new_tag and new_tag.get("clip_path"):
+            clip = Path(new_tag["clip_path"])
+            if clip.exists():
+                speaker_dir = new_tag["tagged_speaker"].replace("/", "-").replace(" ", "_")
+                client.log_artifact(run_id, str(clip), artifact_path=f"dataset/clips/{speaker_dir}")
+
     except Exception as exc:
         print(f"MLflow logging failed (non-critical): {exc}")
 
@@ -1037,12 +1117,16 @@ def submit_tag(req: TagRequest):
         "tagged_speaker": req.speaker,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    # Extract audio clip for the dataset
+    clip_path = _extract_and_save_clip(req.episode_id, req.start, req.end, tag_entry)
+    if clip_path:
+        tag_entry["clip_path"] = clip_path
+
     tags.append(tag_entry)
     _save_tags(tags)
 
-    # Log to MLflow every 10 tags
-    if len(tags) % 10 == 0:
-        _log_to_mlflow(tags)
+    # Log every tag to MLflow (persistent run, incremental)
+    _log_to_mlflow(tags, new_tag=tag_entry)
 
     return {"success": True, "total_tagged": len(tags), "tag": tag_entry}
 
