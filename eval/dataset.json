@@ -1,0 +1,361 @@
+{
+  "version": "1.0",
+  "description": "PLM RAG evaluation dataset — test cases for semantic search over Paren La Mano podcast transcripts",
+  "created": "2026-04-04",
+  "episodes": {
+    "50UtSvG80yA": "ARRANCO PAREN LA MANO 2025 - DESDE LOS ANGELES (Feb 24, ~1h47m)",
+    "SecttWanihg": "AYUDAMOS EN EL AMOR A NUESTROS OYENTES (Mar 27, ~1h50m)"
+  },
+  "test_cases": [
+    {
+      "id": "topic_001",
+      "category": "topic_search",
+      "query": "de que hablaron sobre Los Angeles?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["Los Angeles", "viaje", "Hollywood"],
+      "expected_relevant": true,
+      "notes": "Episode 1 is broadcast from LA. They discuss the city, the Hollywood sign not being illuminated, walking near the Oscars venue."
+    },
+    {
+      "id": "topic_002",
+      "category": "topic_search",
+      "query": "hablaron de los Oscars?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["Oscars", "Los Angeles", "ceremonia"],
+      "expected_relevant": true,
+      "notes": "They mention the Oscars happening on Sunday near where they are, and the possibility of doing a vlog at the Oscars. Also mention SAG Awards."
+    },
+    {
+      "id": "topic_003",
+      "category": "topic_search",
+      "query": "compraron marihuana en Los Angeles?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["cannabis", "marihuana", "Los Angeles", "legal"],
+      "expected_relevant": true,
+      "notes": "They tell the story of visiting a legal cannabis shop in LA where Joaquin asked for the strongest sativa."
+    },
+    {
+      "id": "topic_004",
+      "category": "topic_search",
+      "query": "nueva programacion de Vorterix",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["programacion", "Vorterix", "temporada"],
+      "expected_relevant": true,
+      "notes": "Episode 1 extensively discusses the new Vorterix programming lineup including multiple shows and hosts like Mario Daniel, Doctor Porrini, Mosqui, Tommy Pergolini."
+    },
+    {
+      "id": "topic_005",
+      "category": "topic_search",
+      "query": "consejos de citas y amor",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["citas", "amor", "consejos", "relaciones"],
+      "expected_relevant": true,
+      "notes": "Episode 2 is entirely about helping listeners with love/dating problems via audio messages. Multiple cases: a guy with a date after 2 years, someone dating a friend's mom from Tinder, a breakup situation."
+    },
+    {
+      "id": "topic_006",
+      "category": "topic_search",
+      "query": "juego de Instagram seguidos",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["Instagram", "juego", "seguidos"],
+      "expected_relevant": true,
+      "notes": "Episode 2 features a game where they guess which celebrities are followed by someone on Instagram (Bochini, Angel de Brito, Macri, Messi, Caniggia, Tinelli)."
+    },
+    {
+      "id": "topic_007",
+      "category": "topic_search",
+      "query": "deudas de plata entre amigos",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["deuda", "plata", "amigos", "prestamo"],
+      "expected_relevant": true,
+      "notes": "Episode 2 has extensive discussion about friends owing money, the concept of 'intencion de pago' (IDP), and advice about lending money to friends and exes."
+    },
+    {
+      "id": "topic_008",
+      "category": "topic_search",
+      "query": "lesion de Joaquin Panichelli",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["Panichelli", "lesion", "seleccion"],
+      "expected_relevant": true,
+      "notes": "Episode 2 opens with discussion of Joaquin Panichelli's horrible injury, sending him support, and a campaign to keep supporting him. The national team wore a shirt saying 'Joaquin' in solidarity."
+    },
+    {
+      "id": "speaker_001",
+      "category": "speaker_attribution",
+      "query": "que dijo Roberto sobre la NBA?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": "Roberto",
+      "expected_topics": ["NBA", "basquet", "Los Angeles"],
+      "expected_relevant": true,
+      "notes": "Roberto is described as perhaps the most influential basketball voice in Argentina. They discuss NBA games happening in LA."
+    },
+    {
+      "id": "speaker_002",
+      "category": "speaker_attribution",
+      "query": "que dijo Joaquin sobre la marihuana?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": "Joaquin",
+      "expected_topics": ["marihuana", "strongest", "sativa"],
+      "expected_relevant": true,
+      "notes": "Joaquin asked the vendor for 'the strongest sativa' at the cannabis shop in LA despite friends suggesting cheaper options."
+    },
+    {
+      "id": "speaker_003",
+      "category": "speaker_attribution",
+      "query": "que dijo German sobre las peliculas en el avion?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": "German",
+      "expected_topics": ["avion", "Senna", "peliculas", "emocional"],
+      "expected_relevant": true,
+      "notes": "German got emotional watching Senna on the plane, tearing up during the third episode. He gets sensitive when flying."
+    },
+    {
+      "id": "speaker_004",
+      "category": "speaker_attribution",
+      "query": "que dijo Luquitas sobre los bots de Twitch?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": "Luquitas",
+      "expected_topics": ["bots", "Twitch", "viewers"],
+      "expected_relevant": true,
+      "notes": "Discussion about buying bots for Twitch/Vorterix viewership, different quality tiers of bots, and how a previous show used to inflate numbers with bots."
+    },
+    {
+      "id": "speaker_005",
+      "category": "speaker_attribution",
+      "query": "que consejo dieron sobre la chica colombiana?",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["colombiana", "salsa", "bailar", "cita", "mentira"],
+      "expected_relevant": true,
+      "notes": "A listener lied to a Colombian girl saying he was a great dancer and got invited to a salsa club. Advice included going with a boot/cast, or confessing at the last moment as humor."
+    },
+    {
+      "id": "temporal_001",
+      "category": "temporal_search",
+      "query": "cuando arranco la temporada 2025?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["temporada", "2025", "cuarta temporada", "arranque"],
+      "expected_relevant": true,
+      "notes": "Episode 1 is the first broadcast of 2025 (fourth season). They mention this is the first transmission of Vorterix 2025 and discuss the new format."
+    },
+    {
+      "id": "temporal_002",
+      "category": "temporal_search",
+      "query": "cuando jugaba Argentina contra Mauritania?",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["Argentina", "Mauritania", "seleccion", "futbol"],
+      "expected_relevant": true,
+      "notes": "During episode 2, the Argentina vs Mauritania match was being played live. They follow it in real time, Enzo Fernandez scores at minute 17."
+    },
+    {
+      "id": "temporal_003",
+      "category": "temporal_search",
+      "query": "cuando hablaron de Disney?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["Disney", "Los Angeles", "tickets"],
+      "expected_relevant": true,
+      "notes": "While in LA they realize Disneyland is only 3 minutes away and discuss possibly going the next day and getting tickets."
+    },
+    {
+      "id": "temporal_004",
+      "category": "temporal_search",
+      "query": "cuando contaron lo de la situacion policial en Hollywood?",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["policia", "Hollywood", "patrulleros", "noche"],
+      "expected_relevant": true,
+      "notes": "While walking near the Oscars area at night, they witnessed a police situation with four patrol cars. They were nervous but it turned out to be just two sheets in the trunk."
+    },
+    {
+      "id": "reference_001",
+      "category": "specific_reference",
+      "query": "Mario Daniel Pergolini",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["Mario Daniel", "Pergolini", "programa", "manana"],
+      "expected_relevant": true,
+      "notes": "Mario Daniel is discussed extensively as part of the new morning programming. He calls into the show. They also mention working alongside him and his smoking habit."
+    },
+    {
+      "id": "reference_002",
+      "category": "specific_reference",
+      "query": "Guido Kaczka y el juego del exvalidado",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["Guido Kaczka", "exvalidado", "juego", "viral"],
+      "expected_relevant": true,
+      "notes": "They discuss how their game 'el exvalidado' went viral: originated at their table, was picked up by Guido Kaczka who made it massive, praised by Barsky, and even crossed the Atlantic to Spain (Madrid show for 220 people)."
+    },
+    {
+      "id": "reference_003",
+      "category": "specific_reference",
+      "query": "Samsung Galaxy sponsor",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["Samsung", "Galaxy", "sponsor", "publicidad"],
+      "expected_relevant": true,
+      "notes": "Samsung is a sponsor. They read an ad for Galaxy Book 3, Galaxy Buds 3, Galaxy Tab with 25% off. Samsung also sent them USB devices and a tablet."
+    },
+    {
+      "id": "reference_004",
+      "category": "specific_reference",
+      "query": "Enzo Fernandez gol",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["Enzo Fernandez", "gol", "Argentina", "seleccion"],
+      "expected_relevant": true,
+      "notes": "Enzo Fernandez scored at minute 17 against Mauritania. They narrate the play: cross from the right, Julian lets it pass, Enzo finishes with a right-foot shot."
+    },
+    {
+      "id": "negative_001",
+      "category": "negative",
+      "query": "receta de torta de chocolate",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "Completely unrelated topic — no cooking recipes discussed in any episode"
+    },
+    {
+      "id": "negative_002",
+      "category": "negative",
+      "query": "elecciones presidenciales de Estados Unidos 2024",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "No discussion of US presidential elections in these episodes"
+    },
+    {
+      "id": "negative_003",
+      "category": "negative",
+      "query": "cómo programar en Python con FastAPI",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "Programming tutorial — completely unrelated to the podcast"
+    },
+    {
+      "id": "negative_004",
+      "category": "negative",
+      "query": "precio del dólar blue hoy en Argentina",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "Financial query unrelated to podcast content"
+    },
+    {
+      "id": "negative_005",
+      "category": "negative",
+      "query": "resultado del último partido de cricket de India",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "Cricket is never discussed in this Argentine podcast"
+    },
+    {
+      "id": "negative_006",
+      "category": "negative",
+      "query": "teoría de la relatividad de Einstein explicada",
+      "expected_episode_ids": [],
+      "expected_speaker": null,
+      "expected_topics": [],
+      "expected_relevant": false,
+      "notes": "Physics — no scientific discussions in the podcast"
+    },
+    {
+      "id": "paraphrase_001",
+      "category": "paraphrase",
+      "query": "fueron a un local de cannabis legal",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["cannabis", "marihuana", "Los Angeles", "legal"],
+      "expected_relevant": true,
+      "notes": "Paraphrase of the marijuana shop visit story. Original discussion uses 'marihuana', 'cannabis legal', 'local donde venden marihuana'."
+    },
+    {
+      "id": "paraphrase_002",
+      "category": "paraphrase",
+      "query": "un oyente que le debe guita a un amigo",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["deuda", "plata", "amigos"],
+      "expected_relevant": true,
+      "notes": "Paraphrase of the money lending discussion. Multiple listeners call about owing money to friends, including one who borrowed from Facundo Campasso and one who sold Bad Bunny tickets to a friend."
+    },
+    {
+      "id": "topic_009",
+      "category": "topic_search",
+      "query": "tatuajes de Paren La Mano",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["tatuajes", "fans", "tribunero", "funko pop"],
+      "expected_relevant": true,
+      "notes": "Episode 2 discusses fans who got PLM tattoos: the logo, the hand, their faces as funko pops. They talk about laser removal and invite a tattooed fan to the tribunero."
+    },
+    {
+      "id": "reference_005",
+      "category": "specific_reference",
+      "query": "el polaco y el vlog",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["polaco", "vlog", "camara", "Los Angeles"],
+      "expected_relevant": true,
+      "notes": "The 'polaco' is the cameraman filming vlogs in LA. They discuss his filming style, how he has 'weapons of mass destruction' (compromising footage), and how a professional vlogger makes the content more natural."
+    },
+    {
+      "id": "topic_010",
+      "category": "topic_search",
+      "query": "formato del programa con rotacion",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["formato", "rotacion", "tridente", "lunes"],
+      "expected_relevant": true,
+      "notes": "They explain the new format: 5 members on Mondays, then the original trident of 3 plus Roberto and Joaquin rotating on other days. This was a response to criticism of the previous format with too many people."
+    },
+    {
+      "id": "speaker_006",
+      "category": "speaker_attribution",
+      "query": "que dijo Roberto sobre prestar plata?",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": "Roberto",
+      "expected_topics": ["plata", "deuda", "amigos", "consejo"],
+      "expected_relevant": true,
+      "notes": "Roberto gives advice on lending money: if you give it, you can't ask for it back; but if they don't return it, they're shameless. He also suggests the debtor should show intention to pay (IDP)."
+    },
+    {
+      "id": "temporal_005",
+      "category": "temporal_search",
+      "query": "cuando terminaron con la pareja de siete meses?",
+      "expected_episode_ids": ["SecttWanihg"],
+      "expected_speaker": null,
+      "expected_topics": ["ruptura", "pareja", "siete meses", "cosas"],
+      "expected_relevant": true,
+      "notes": "A listener called about breaking up with his partner of seven months. She stayed the night out of pity, didn't take her things, and he doesn't know how to tell her it's truly over. They draft a WhatsApp breakup message for him."
+    },
+    {
+      "id": "paraphrase_003",
+      "category": "paraphrase",
+      "query": "se emocionaron viendo una serie en el vuelo",
+      "expected_episode_ids": ["50UtSvG80yA"],
+      "expected_speaker": null,
+      "expected_topics": ["avion", "Senna", "emocion", "llorar"],
+      "expected_relevant": true,
+      "notes": "Paraphrase of German crying while watching the Senna series on the plane. The original discusses him tearing up during episode 3 and getting sensitive during flights."
+    }
+  ]
+}

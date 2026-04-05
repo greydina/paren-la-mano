@@ -235,6 +235,7 @@ class ChunkResult(BaseModel):
     end_time: float | None = None
     speaker: str | None = None
     score: float
+    youtube_url: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -384,15 +385,19 @@ def pgvector_search(query: str, top_k: int = TOP_K, speaker: str | None = None) 
             similarity = 1.0 - float(row["distance"])
             if similarity < 0.1:
                 continue
+            clean_text = _strip_episode_prefix(row["text"])
+            video_id = row["video_id"]
+            start = row["start_time"]
             results.append(ChunkResult(
-                text=row["text"],
+                text=clean_text,
                 episode_title=row["title"] or "",
                 episode_date=str(row["upload_date"]) if row["upload_date"] else None,
-                youtube_id=row["video_id"],
-                start_time=row["start_time"],
+                youtube_id=video_id,
+                start_time=start,
                 end_time=row["end_time"],
                 speaker=row.get("speaker"),
                 score=round(similarity, 4),
+                youtube_url=_youtube_timestamp_url(video_id, start),
             ))
         return results
     except Exception as exc:
@@ -402,6 +407,23 @@ def pgvector_search(query: str, top_k: int = TOP_K, speaker: str | None = None) 
         except Exception:
             pass
         return None
+
+
+def _strip_episode_prefix(text: str) -> str:
+    """Strip 'Episodio: TITLE (DATE)\\n\\n' metadata prefix from chunk text."""
+    if text.startswith("Episodio: "):
+        idx = text.find("\n\n")
+        if idx != -1:
+            return text[idx + 2:]
+    return text
+
+
+def _youtube_timestamp_url(youtube_id: str, start_time: float | None) -> str:
+    """Build a YouTube URL with optional timestamp."""
+    url = f"https://www.youtube.com/watch?v={youtube_id}"
+    if start_time is not None:
+        url += f"&t={int(start_time)}"
+    return url
 
 
 def _format_timestamp(seconds: float | None) -> str:
@@ -468,20 +490,26 @@ def format_answer_chunks(query: str, chunks: list[ChunkResult]) -> str:
     for vid_id, ep_chunks in seen_episodes.items():
         title = ep_chunks[0].episode_title
         date = ep_chunks[0].episode_date or ""
-        lines.append(f"**{title}** ({date}):")
+        # Clean title: strip "Episodio: " prefix if present
+        clean_title = title
+        if clean_title.lower().startswith("episodio: "):
+            clean_title = clean_title[10:]
+        lines.append(f"\U0001f399\ufe0f **Programa del {date}** — {clean_title}")
+        lines.append("")
         for chunk in ep_chunks:
             ts = _format_timestamp(chunk.start_time)
-            snippet = chunk.text[:200].strip()
-            if len(chunk.text) > 200:
+            snippet = chunk.text[:150].strip()
+            if len(chunk.text) > 150:
                 snippet += "..."
-            speaker_tag = f"[{chunk.speaker}] " if chunk.speaker else ""
-            if ts:
-                lines.append(f"  - {speaker_tag}[{ts}] \"{snippet}\"")
-            else:
-                lines.append(f"  - {speaker_tag}\"{snippet}\"")
+            speaker_tag = chunk.speaker or "?"
+            ts_tag = f", {ts}" if ts else ""
+            lines.append(f"[{speaker_tag}{ts_tag}] \"{snippet}\"")
+            yt_url = chunk.youtube_url or _youtube_timestamp_url(vid_id, chunk.start_time)
+            lines.append(f"\U0001f517 Ver en YouTube: {yt_url}")
+            lines.append("")
         lines.append("")
 
-    return intro + "\n".join(lines)
+    return intro + "\n".join(lines).rstrip()
 
 
 # ---------------------------------------------------------------------------
@@ -504,8 +532,22 @@ def chat(req: ChatRequest):
     # Prefer pgvector chunk search when available
     if pg_available:
         chunk_results = pgvector_search(query, speaker=speaker)
+
+        # Fallback: if speaker-filtered search returned empty, retry without speaker
+        speaker_fallback = False
+        if speaker and (chunk_results is None or len(chunk_results) == 0):
+            chunk_results = pgvector_search(query)
+            speaker_fallback = True
+
         if chunk_results is not None and len(chunk_results) > 0:
-            answer = format_answer_chunks(query, chunk_results)
+            if speaker_fallback:
+                answer = (
+                    f"No encontré fragmentos específicos de {speaker}, "
+                    f"pero estos resultados pueden ser relevantes:\n\n"
+                    + format_answer_chunks(query, chunk_results)
+                )
+            else:
+                answer = format_answer_chunks(query, chunk_results)
             # Also run episode search for episode-level context
             ep_search = semantic_search(query)
             ep_results = [
