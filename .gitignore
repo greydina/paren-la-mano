@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+api/ratings.db
+data/audio/
+data/transcripts/
+data/embeddings/
+data/diarization/
+data/voice_profiles.json
+/tmp/

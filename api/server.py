@@ -1,6 +1,7 @@
 """
 Paren la Mano — RAG Chat API
 Semantic search over episode data using sentence-transformers.
+pgvector search over transcript chunks when PostgreSQL is available.
 Letterboxd-style ratings system for episodes.
 Run: uvicorn server:app --host 0.0.0.0 --port 8889
 """
@@ -8,6 +9,7 @@ Run: uvicorn server:app --host 0.0.0.0 --port 8889
 import json
 import os
 import random
+import re
 import sqlite3
 import numpy as np
 from pathlib import Path
@@ -16,12 +18,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
+try:
+    import psycopg2
+    import psycopg2.extras
+    HAS_PSYCOPG2 = True
+except ImportError:
+    HAS_PSYCOPG2 = False
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 EPISODES_PATH = Path(__file__).resolve().parent.parent / "data" / "episodes.json"
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 TOP_K = 5
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://plm_user:plm_pass_2026@localhost:5432/plm_db",
+)
+KNOWN_SPEAKERS = ["Roberto", "Luquitas", "Joaquin", "German"]
+# Patterns to detect speaker intent in Spanish queries (case-insensitive)
+_SPEAKER_PATTERNS = [
+    r"(?:qu[eé]\s+dijo|dice|decia|comento|hablo|habl[oó]|opina|opino|opin[oó]|menciono|mencion[oó]|cont[oó]|conto)\s+(\w+)",
+    r"(?:seg[uú]n|para)\s+(\w+)",
+    r"(?:cuando|donde)\s+(\w+)\s+(?:dijo|dice|hablo|habl[oó]|comento|coment[oó]|menciono|mencion[oó])",
+]
 RATINGS_DB_PATH = os.environ.get(
     "RATINGS_DB_PATH",
     str(Path(__file__).resolve().parent / "ratings.db"),
@@ -47,11 +67,24 @@ episodes: list[dict] = []
 episode_texts: list[str] = []
 episode_embeddings: np.ndarray | None = None
 model: SentenceTransformer | None = None
+pg_available: bool = False
+
+
+def _get_pg():
+    """Return a new PostgreSQL connection or None on failure."""
+    if not HAS_PSYCOPG2:
+        return None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+    except Exception as exc:
+        print(f"PostgreSQL connection failed: {exc}")
+        return None
 
 
 @app.on_event("startup")
 def load_data():
-    global episodes, episode_texts, episode_embeddings, model
+    global episodes, episode_texts, episode_embeddings, model, pg_available
 
     # Load episodes
     with open(EPISODES_PATH, "r", encoding="utf-8") as f:
@@ -73,6 +106,28 @@ def load_data():
     norms = np.linalg.norm(episode_embeddings, axis=1, keepdims=True)
     episode_embeddings = episode_embeddings / norms
     print(f"Indexed {len(episodes)} episodes.")
+
+    # Check PostgreSQL + pgvector availability
+    conn = _get_pg()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT COUNT(*) FROM chunks WHERE embedding IS NOT NULL"
+            )
+            chunk_count = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            if chunk_count > 0:
+                pg_available = True
+                print(f"pgvector search enabled — {chunk_count} embedded chunks available.")
+            else:
+                print("PostgreSQL connected but no embedded chunks found. Using in-memory search.")
+        except Exception as exc:
+            print(f"pgvector check failed: {exc}. Using in-memory search.")
+            conn.close()
+    else:
+        print("PostgreSQL unavailable. Using in-memory episode search.")
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +212,7 @@ def init_ratings():
 # ---------------------------------------------------------------------------
 class ChatRequest(BaseModel):
     query: str
+    speaker: str | None = None
 
 
 class EpisodeResult(BaseModel):
@@ -165,14 +221,27 @@ class EpisodeResult(BaseModel):
     fecha: str
     descripcion: str
     youtube_id: str
-    duracion: str
+    duracion: str | None = None
     numero: int | None = None
+    score: float
+
+
+class ChunkResult(BaseModel):
+    text: str
+    episode_title: str
+    episode_date: str | None = None
+    youtube_id: str
+    start_time: float | None = None
+    end_time: float | None = None
+    speaker: str | None = None
     score: float
 
 
 class ChatResponse(BaseModel):
     answer: str
     episodes: list[EpisodeResult]
+    chunks: list[ChunkResult] = []
+    source: str = "episodes"  # "episodes" or "chunks"
 
 
 # -- Ratings models --
@@ -226,6 +295,127 @@ def semantic_search(query: str, top_k: int = TOP_K) -> list[tuple[dict, float]]:
     return results
 
 
+def detect_speaker_from_query(query: str) -> str | None:
+    """Auto-detect a speaker name from the query text (Spanish patterns).
+
+    Examples:
+        "que dijo Luquitas sobre futbol" -> "Luquitas"
+        "segun Roberto el partido" -> "Roberto"
+    """
+    # Build a lookup: lowered name -> canonical name
+    name_map = {s.lower(): s for s in KNOWN_SPEAKERS}
+    query_lower = query.lower()
+
+    # Try regex patterns first
+    for pattern in _SPEAKER_PATTERNS:
+        m = re.search(pattern, query_lower)
+        if m:
+            candidate = m.group(1).lower()
+            if candidate in name_map:
+                return name_map[candidate]
+
+    # Fallback: check if any known speaker name appears anywhere in the query
+    for lower_name, canonical in name_map.items():
+        if lower_name in query_lower:
+            return canonical
+
+    return None
+
+
+def pgvector_search(query: str, top_k: int = TOP_K, speaker: str | None = None) -> list[ChunkResult] | None:
+    """Search transcript chunks via pgvector. Returns None if DB unavailable."""
+    conn = _get_pg()
+    if not conn:
+        return None
+    try:
+        query_emb = model.encode([query], convert_to_numpy=True)
+        query_emb = query_emb / np.linalg.norm(query_emb, axis=1, keepdims=True)
+        emb_list = query_emb[0].tolist()
+        emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        if speaker:
+            cur.execute(
+                """
+                SELECT
+                    c.text,
+                    c.start_time,
+                    c.end_time,
+                    c.speaker,
+                    c.embedding <=> %s::vector AS distance,
+                    v.title,
+                    v.upload_date,
+                    v.video_id
+                FROM chunks c
+                JOIN videos v ON c.video_id = v.video_id
+                WHERE c.embedding IS NOT NULL AND c.speaker = %s
+                ORDER BY c.embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (emb_str, speaker, emb_str, top_k),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT
+                    c.text,
+                    c.start_time,
+                    c.end_time,
+                    c.speaker,
+                    c.embedding <=> %s::vector AS distance,
+                    v.title,
+                    v.upload_date,
+                    v.video_id
+                FROM chunks c
+                JOIN videos v ON c.video_id = v.video_id
+                WHERE c.embedding IS NOT NULL
+                ORDER BY c.embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (emb_str, emb_str, top_k),
+            )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        results = []
+        for row in rows:
+            similarity = 1.0 - float(row["distance"])
+            if similarity < 0.1:
+                continue
+            results.append(ChunkResult(
+                text=row["text"],
+                episode_title=row["title"] or "",
+                episode_date=str(row["upload_date"]) if row["upload_date"] else None,
+                youtube_id=row["video_id"],
+                start_time=row["start_time"],
+                end_time=row["end_time"],
+                speaker=row.get("speaker"),
+                score=round(similarity, 4),
+            ))
+        return results
+    except Exception as exc:
+        print(f"pgvector search error: {exc}")
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return None
+
+
+def _format_timestamp(seconds: float | None) -> str:
+    """Convert seconds to HH:MM:SS or MM:SS string."""
+    if seconds is None:
+        return ""
+    total = int(seconds)
+    h, remainder = divmod(total, 3600)
+    m, s = divmod(remainder, 60)
+    if h > 0:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
 def format_answer(query: str, results: list[tuple[dict, float]]) -> str:
     """Build a friendly Spanish answer referencing matching episodes."""
     if not results:
@@ -252,6 +442,48 @@ def format_answer(query: str, results: list[tuple[dict, float]]) -> str:
     return intro + "\n".join(lines)
 
 
+def format_answer_chunks(query: str, chunks: list[ChunkResult]) -> str:
+    """Build a Spanish answer referencing specific transcript moments."""
+    if not chunks:
+        return (
+            "No encontre fragmentos que coincidan con tu consulta. "
+            "Proba con otras palabras clave o preguntame sobre futbol, "
+            "entrevistas, anecdotas o cualquier tema del programa."
+        )
+
+    # Group chunks by episode
+    seen_episodes: dict[str, list[ChunkResult]] = {}
+    for chunk in chunks:
+        seen_episodes.setdefault(chunk.youtube_id, []).append(chunk)
+
+    n_episodes = len(seen_episodes)
+    n_chunks = len(chunks)
+    intro = (
+        f"Encontre {n_chunks} fragmento{'s' if n_chunks != 1 else ''} "
+        f"en {n_episodes} programa{'s' if n_episodes != 1 else ''} "
+        f"relacionados con tu consulta:\n\n"
+    )
+
+    lines = []
+    for vid_id, ep_chunks in seen_episodes.items():
+        title = ep_chunks[0].episode_title
+        date = ep_chunks[0].episode_date or ""
+        lines.append(f"**{title}** ({date}):")
+        for chunk in ep_chunks:
+            ts = _format_timestamp(chunk.start_time)
+            snippet = chunk.text[:200].strip()
+            if len(chunk.text) > 200:
+                snippet += "..."
+            speaker_tag = f"[{chunk.speaker}] " if chunk.speaker else ""
+            if ts:
+                lines.append(f"  - {speaker_tag}[{ts}] \"{snippet}\"")
+            else:
+                lines.append(f"  - {speaker_tag}\"{snippet}\"")
+        lines.append("")
+
+    return intro + "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
@@ -264,12 +496,36 @@ def chat(req: ChatRequest):
             episodes=[],
         )
 
+    # Resolve speaker: explicit param takes priority, then auto-detect from query
+    speaker = req.speaker
+    if not speaker:
+        speaker = detect_speaker_from_query(query)
+
+    # Prefer pgvector chunk search when available
+    if pg_available:
+        chunk_results = pgvector_search(query, speaker=speaker)
+        if chunk_results is not None and len(chunk_results) > 0:
+            answer = format_answer_chunks(query, chunk_results)
+            # Also run episode search for episode-level context
+            ep_search = semantic_search(query)
+            ep_results = [
+                EpisodeResult(**ep, score=round(score, 4))
+                for ep, score in ep_search
+            ]
+            return ChatResponse(
+                answer=answer,
+                episodes=ep_results,
+                chunks=chunk_results,
+                source="chunks",
+            )
+
+    # Fallback: in-memory episode search
     results = semantic_search(query)
     answer = format_answer(query, results)
     ep_results = [
         EpisodeResult(**ep, score=round(score, 4)) for ep, score in results
     ]
-    return ChatResponse(answer=answer, episodes=ep_results)
+    return ChatResponse(answer=answer, episodes=ep_results, source="episodes")
 
 
 # ---------------------------------------------------------------------------
