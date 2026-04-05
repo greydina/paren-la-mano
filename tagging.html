@@ -311,8 +311,9 @@
 
     .segment-item {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.4rem 0.75rem;
       padding: 0.6rem 0.85rem;
       border-radius: var(--radius-sm);
       background: var(--bg-card);
@@ -320,6 +321,16 @@
       cursor: pointer;
       transition: all var(--transition);
       font-size: 0.82rem;
+    }
+    .seg-text {
+      width: 100%;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding-left: 3.25rem;
     }
 
     .segment-item:hover {
@@ -575,6 +586,7 @@
         <div class="player-auto-speaker">
           Auto-detectado: <strong id="player-auto-speaker">--</strong>
         </div>
+        <div id="player-text" style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem; padding:0.6rem; background:var(--bg-secondary); border-radius:var(--radius-sm); line-height:1.5; max-height:4.5em; overflow-y:auto; display:none;"></div>
         <audio id="audio-player" controls preload="none"></audio>
         <div class="tag-section-label">Protagonistas</div>
         <div class="tag-buttons" id="tag-buttons">
@@ -855,6 +867,14 @@
         item.appendChild(speaker);
         item.appendChild(status);
 
+        // Show text preview if available
+        if (seg.text) {
+          const textEl = document.createElement('div');
+          textEl.className = 'seg-text';
+          textEl.textContent = seg.text;
+          item.appendChild(textEl);
+        }
+
         item.addEventListener('click', () => selectSegment(i));
         list.appendChild(item);
       });
@@ -928,6 +948,15 @@
       playerTime.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
       playerAutoSpeaker.textContent = seg.speaker;
       playerAutoSpeaker.style.color = speakerColor(seg.speaker);
+
+      // Show transcript text
+      const playerText = document.getElementById('player-text');
+      if (seg.text) {
+        playerText.textContent = '"' + seg.text + '"';
+        playerText.style.display = 'block';
+      } else {
+        playerText.style.display = 'none';
+      }
 
       // Load audio
       const audioUrl = API + '/api/tagging/audio/' + currentEpisode + '?start=' + seg.start + '&end=' + seg.end;
