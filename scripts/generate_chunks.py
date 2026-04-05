@@ -2,9 +2,12 @@
 """Chunk transcripts and generate embeddings for Paren La Mano episodes.
 
 Reads transcript JSON files (with timed segments from Whisper), chunks them
-into ~500-token windows with ~50-token overlap respecting sentence boundaries,
-prepends episode metadata for better retrieval, and generates embeddings using
-paraphrase-multilingual-MiniLM-L12-v2 (384 dims).
+into ~256-token windows with ~50-token overlap respecting sentence boundaries,
+and generates embeddings using paraphrase-multilingual-MiniLM-L12-v2 (384 dims).
+
+Metadata (episode title, date) is stored as separate fields in the chunk JSON
+but is NOT prepended to the text before embedding, so vectors represent the
+actual transcript content without metadata contamination.
 
 Output per episode:
   data/embeddings/<youtube_id>_chunks.json  — chunk text + metadata
@@ -27,7 +30,7 @@ EMBEDDINGS_DIR = BASE_DIR / "data" / "embeddings"
 EPISODES_FILE = BASE_DIR / "data" / "episodes.json"
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-CHUNK_TOKENS = 500
+CHUNK_TOKENS = 256
 OVERLAP_TOKENS = 50
 TOKEN_FACTOR = 1.3  # approx tokens per whitespace-delimited word for Spanish
 
@@ -207,7 +210,6 @@ def process_episode(youtube_id: str, episodes: dict, model: SentenceTransformer)
     meta = episodes.get(youtube_id, {})
     episode_title = meta.get("titulo", "Desconocido")
     episode_date = meta.get("fecha", "")
-    header = f"Episodio: {episode_title} ({episode_date})"
 
     # Chunk
     chunks = chunk_segments(segments)
@@ -218,10 +220,12 @@ def process_episode(youtube_id: str, episodes: dict, model: SentenceTransformer)
     total_chars = sum(len(c["text"]) for c in chunks)
     print(f"  [{youtube_id}] {len(chunks)} chunks from {total_chars} chars")
 
-    # Prepend metadata to each chunk text for embedding
-    texts_for_embedding = [f"{header}\n\n{c['text']}" for c in chunks]
+    # Text for embedding is the raw transcript content only — no metadata prefix.
+    # This avoids all chunks from the same episode clustering together due to
+    # the title dominating the vector.
+    texts_for_embedding = [c["text"] for c in chunks]
 
-    # Build chunk metadata records
+    # Build chunk metadata records (metadata stored as separate fields)
     chunk_records = []
     for i, c in enumerate(chunks):
         chunk_records.append({
@@ -232,7 +236,7 @@ def process_episode(youtube_id: str, episodes: dict, model: SentenceTransformer)
             "episode_date": episode_date,
             "start_time": round(c["start_time"], 2),
             "end_time": round(c["end_time"], 2),
-            "text": texts_for_embedding[i],
+            "text": c["text"],
             "token_count": c["token_count"],
         })
 
