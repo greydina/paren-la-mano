@@ -199,7 +199,11 @@
     .speaker-joaquin { --speaker-color: #ffd93d; }
     .speaker-german { --speaker-color: #6bcb77; }
     .speaker-alfredo { --speaker-color: #4d96ff; }
-    .speaker-otro { --speaker-color: #9b59b6; }
+    .speaker-jazmin { --speaker-color: #ff69b4; }
+    .speaker-otrapersona { --speaker-color: #9b59b6; }
+    .speaker-vocesmezcladas { --speaker-color: #e67e22; }
+    .speaker-ruidomusica { --speaker-color: #7f8c8d; }
+    .speaker-audiograbado { --speaker-color: #95a5a6; }
 
     .tag-btn.speaker-luquitas { border-color: #4ecdc4; }
     .tag-btn.speaker-luquitas:hover, .tag-btn.speaker-luquitas.selected { background: #4ecdc4; color: #1a1a2e; border-color: #4ecdc4; }
@@ -211,8 +215,60 @@
     .tag-btn.speaker-german:hover, .tag-btn.speaker-german.selected { background: #6bcb77; color: #1a1a2e; border-color: #6bcb77; }
     .tag-btn.speaker-alfredo { border-color: #4d96ff; }
     .tag-btn.speaker-alfredo:hover, .tag-btn.speaker-alfredo.selected { background: #4d96ff; color: #1a1a2e; border-color: #4d96ff; }
-    .tag-btn.speaker-otro { border-color: #9b59b6; }
-    .tag-btn.speaker-otro:hover, .tag-btn.speaker-otro.selected { background: #9b59b6; color: #fff; border-color: #9b59b6; }
+    .tag-btn.speaker-jazmin { border-color: #ff69b4; }
+    .tag-btn.speaker-jazmin:hover, .tag-btn.speaker-jazmin.selected { background: #ff69b4; color: #1a1a2e; border-color: #ff69b4; }
+    .tag-btn.speaker-otrapersona { border-color: #9b59b6; }
+    .tag-btn.speaker-otrapersona:hover, .tag-btn.speaker-otrapersona.selected { background: #9b59b6; color: #fff; border-color: #9b59b6; }
+    .tag-btn.speaker-vocesmezcladas { border-color: #e67e22; }
+    .tag-btn.speaker-vocesmezcladas:hover, .tag-btn.speaker-vocesmezcladas.selected { background: #e67e22; color: #fff; border-color: #e67e22; }
+    .tag-btn.speaker-ruidomusica { border-color: #7f8c8d; }
+    .tag-btn.speaker-ruidomusica:hover, .tag-btn.speaker-ruidomusica.selected { background: #7f8c8d; color: #fff; border-color: #7f8c8d; }
+    .tag-btn.speaker-audiograbado { border-color: #95a5a6; }
+    .tag-btn.speaker-audiograbado:hover, .tag-btn.speaker-audiograbado.selected { background: #95a5a6; color: #1a1a2e; border-color: #95a5a6; }
+
+    /* Noise toggle */
+    .modifier-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      align-items: center;
+    }
+    .noise-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.8rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      flex: 1;
+    }
+    .noise-toggle:hover { border-color: #e67e22; }
+    .noise-toggle.active {
+      border-color: #e67e22;
+      background: rgba(230, 126, 34, 0.2);
+      color: #e67e22;
+    }
+    .noise-toggle input { display: none; }
+    .noise-check { width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .noise-toggle.active .noise-check { border-color: #e67e22; background: #e67e22; color: #1a1a2e; }
+
+    /* Section labels */
+    .tag-section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-top: 0.6rem;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
 
     /* Navigation buttons */
     .nav-buttons {
@@ -520,13 +576,28 @@
           Auto-detectado: <strong id="player-auto-speaker">--</strong>
         </div>
         <audio id="audio-player" controls preload="none"></audio>
+        <div class="tag-section-label">Protagonistas</div>
         <div class="tag-buttons" id="tag-buttons">
           <button class="tag-btn speaker-luquitas" data-speaker="Luquitas">Luquitas <span class="shortcut">1</span></button>
           <button class="tag-btn speaker-roberto" data-speaker="Roberto">Roberto <span class="shortcut">2</span></button>
           <button class="tag-btn speaker-joaquin" data-speaker="Joaquin">Joaquin <span class="shortcut">3</span></button>
           <button class="tag-btn speaker-german" data-speaker="German">German <span class="shortcut">4</span></button>
           <button class="tag-btn speaker-alfredo" data-speaker="Alfredo">Alfredo <span class="shortcut">5</span></button>
-          <button class="tag-btn speaker-otro" data-speaker="Otro">Otro <span class="shortcut">6</span></button>
+          <button class="tag-btn speaker-jazmin" data-speaker="Jazmin">Jazmin <span class="shortcut">6</span></button>
+        </div>
+        <div class="tag-section-label">Condiciones de audio</div>
+        <div class="tag-buttons">
+          <button class="tag-btn speaker-otrapersona" data-speaker="Otra persona">Otra persona <span class="shortcut">7</span></button>
+          <button class="tag-btn speaker-vocesmezcladas" data-speaker="Voces mezcladas">Voces mezcladas <span class="shortcut">8</span></button>
+          <button class="tag-btn speaker-ruidomusica" data-speaker="Ruido/Musica">Ruido/Musica <span class="shortcut">9</span></button>
+          <button class="tag-btn speaker-audiograbado" data-speaker="Audio grabado">Audio grabado <span class="shortcut">0</span></button>
+        </div>
+        <div class="modifier-row">
+          <label class="noise-toggle" id="noise-toggle">
+            <input type="checkbox" id="noise-check">
+            <span class="noise-check">&#10003;</span>
+            Con ruido de fondo <span class="shortcut">N</span>
+          </label>
         </div>
         <div class="nav-buttons">
           <button class="nav-btn" id="btn-prev" disabled>Anterior</button>
@@ -536,11 +607,13 @@
 
       <div class="shortcuts-help">
         <strong>Atajos:</strong><br>
-        <kbd>1</kbd>-<kbd>6</kbd> Etiquetar speaker &nbsp;
+        <kbd>1</kbd>-<kbd>6</kbd> Protagonistas &nbsp;
+        <kbd>7</kbd>-<kbd>0</kbd> Condiciones &nbsp;
+        <kbd>N</kbd> Toggle ruido<br>
         <kbd>Space</kbd> Play/Pause &nbsp;
-        <kbd>R</kbd> Replay<br>
-        <kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> Navegar segmentos &nbsp;
-        <kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> Pagina ant/sig
+        <kbd>R</kbd> Replay &nbsp;
+        <kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> Navegar &nbsp;
+        <kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> Paginas
       </div>
     </div>
 
@@ -575,14 +648,18 @@
 
   <script>
     const API = 'http://' + window.location.hostname + ':8889';
-    const SPEAKERS = ['Luquitas', 'Roberto', 'Joaquin', 'German', 'Alfredo', 'Otro'];
+    const SPEAKERS = ['Luquitas', 'Roberto', 'Joaquin', 'German', 'Alfredo', 'Jazmin', 'Otra persona', 'Voces mezcladas', 'Ruido/Musica', 'Audio grabado'];
     const SPEAKER_COLORS = {
       'Luquitas': '#4ecdc4',
       'Roberto': '#ff6b6b',
       'Joaquin': '#ffd93d',
       'German': '#6bcb77',
       'Alfredo': '#4d96ff',
-      'Otro': '#9b59b6',
+      'Jazmin': '#ff69b4',
+      'Otra persona': '#9b59b6',
+      'Voces mezcladas': '#e67e22',
+      'Ruido/Musica': '#7f8c8d',
+      'Audio grabado': '#95a5a6',
     };
 
     // State
@@ -612,6 +689,8 @@
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
     const tagButtons = document.querySelectorAll('.tag-btn');
+    const noiseToggle = document.getElementById('noise-toggle');
+    const noiseCheck = document.getElementById('noise-check');
 
     // --- Helpers ---
     function fmtTime(sec) {
@@ -628,12 +707,22 @@
       if (base.startsWith('joaquin')) return 'joaquin';
       if (base.startsWith('german')) return 'german';
       if (base.startsWith('alfredo')) return 'alfredo';
-      return 'otro';
+      if (base.startsWith('jazmin')) return 'jazmin';
+      if (base.startsWith('otrapersona')) return 'otrapersona';
+      if (base.startsWith('vocesmezcladas')) return 'vocesmezcladas';
+      if (base.startsWith('ruidomusica') || base.startsWith('ruido')) return 'ruidomusica';
+      if (base.startsWith('audiograbado')) return 'audiograbado';
+      return 'otrapersona';
     }
 
     function speakerColor(name) {
-      const cls = speakerClass(name);
-      return SPEAKER_COLORS[SPEAKERS.find(s => s.toLowerCase() === cls)] || SPEAKER_COLORS['Otro'];
+      // Handle "+ruido" suffix
+      const baseName = name.replace(/ \+ruido$/, '');
+      // Direct match first
+      if (SPEAKER_COLORS[baseName]) return SPEAKER_COLORS[baseName];
+      // Fallback via class
+      const cls = speakerClass(baseName);
+      return SPEAKER_COLORS[SPEAKERS.find(s => speakerClass(s) === cls)] || '#9b59b6';
     }
 
     // --- API calls ---
@@ -685,6 +774,9 @@
       const seg = segments[activeSegmentIdx];
       if (!seg) return;
 
+      const hasNoise = noiseCheck.checked;
+      const fullTag = hasNoise ? speaker + ' +ruido' : speaker;
+
       try {
         const res = await fetch(API + '/api/tagging/tag', {
           method: 'POST',
@@ -692,19 +784,18 @@
           body: JSON.stringify({
             episode_id: currentEpisode,
             segment_index: seg.index,
-            speaker: speaker,
+            speaker: fullTag,
             start: seg.start,
             end: seg.end,
           }),
         });
         const data = await res.json();
         if (data.success) {
-          // Update local state
-          seg.tagged_speaker = speaker;
+          seg.tagged_speaker = fullTag;
           renderSegments();
-          updateTagButtonState(speaker);
+          updateTagButtonState(fullTag);
           fetchStats();
-          // Auto-advance to next segment
+          // Auto-advance
           if (activeSegmentIdx < segments.length - 1) {
             selectSegment(activeSegmentIdx + 1);
           }
@@ -903,6 +994,11 @@
       });
     });
 
+    noiseToggle.addEventListener('click', () => {
+      noiseCheck.checked = !noiseCheck.checked;
+      noiseToggle.classList.toggle('active', noiseCheck.checked);
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       // Don't capture when typing in inputs
@@ -914,7 +1010,17 @@
         case '3': e.preventDefault(); submitTag('Joaquin'); break;
         case '4': e.preventDefault(); submitTag('German'); break;
         case '5': e.preventDefault(); submitTag('Alfredo'); break;
-        case '6': e.preventDefault(); submitTag('Otro'); break;
+        case '6': e.preventDefault(); submitTag('Jazmin'); break;
+        case '7': e.preventDefault(); submitTag('Otra persona'); break;
+        case '8': e.preventDefault(); submitTag('Voces mezcladas'); break;
+        case '9': e.preventDefault(); submitTag('Ruido/Musica'); break;
+        case '0': e.preventDefault(); submitTag('Audio grabado'); break;
+        case 'n':
+        case 'N':
+          e.preventDefault();
+          noiseCheck.checked = !noiseCheck.checked;
+          noiseToggle.classList.toggle('active', noiseCheck.checked);
+          break;
         case ' ':
           e.preventDefault();
           if (audioPlayer.paused) audioPlayer.play().catch(() => {});
