@@ -54,7 +54,10 @@ TAGGING_DIR = DATA_DIR / "tagging"
 TAGS_FILE = TAGGING_DIR / "tags.json"
 DIARIZATION_DIR = DATA_DIR / "diarization"
 AUDIO_DIR = DATA_DIR / "audio"
-TAGGING_SPEAKERS = ["Luquitas", "Roberto", "Joaquin", "German", "Alfredo", "Otro"]
+TAGGING_SPEAKERS = [
+    "Luquitas", "Roberto", "Joaquin", "German", "Alfredo", "Jazmin",
+    "Otra persona", "Voces mezcladas", "Ruido/Musica", "Audio grabado",
+]
 # Patterns to detect speaker intent in Spanish queries (case-insensitive)
 _SPEAKER_PATTERNS = [
     r"(?:qu[eé]\s+dijo|dice|decia|comento|hablo|habl[oó]|opina|opino|opin[oó]|menciono|mencion[oó]|cont[oó]|conto)\s+(\w+)",
@@ -1001,7 +1004,9 @@ def get_audio_clip(
 @app.post("/api/tagging/tag")
 def submit_tag(req: TagRequest):
     """Submit a speaker tag for a diarization segment."""
-    if req.speaker not in TAGGING_SPEAKERS:
+    # Strip "+ruido" suffix for validation, keep it in the stored tag
+    base_speaker = req.speaker.replace(" +ruido", "")
+    if base_speaker not in TAGGING_SPEAKERS:
         raise HTTPException(400, f"Unknown speaker: {req.speaker}. Must be one of {TAGGING_SPEAKERS}")
 
     # Verify episode exists
