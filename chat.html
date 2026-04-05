@@ -64,7 +64,7 @@
 
   <script src="script.js"></script>
   <script>
-    const API_URL = '/api/chat';
+    const API_URL = `${window.location.protocol}//${window.location.hostname}:8889/api/chat`;
     const messagesEl = document.getElementById('chat-messages');
     const inputEl = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-send');

@@ -2,6 +2,7 @@
 
 (function () {
   'use strict';
+  var API_BASE = window.location.protocol + '//' + window.location.hostname + ':8889';
 
   // Season config
   const SEASONS = [
@@ -85,7 +86,7 @@
 
   async function fetchGridData() {
     try {
-      var res = await fetch('/api/ratings/grid');
+      var res = await fetch(API_BASE + '/api/ratings/grid');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
       return data;
@@ -265,7 +266,7 @@
     };
 
     try {
-      var res = await fetch('/api/ratings', {
+      var res = await fetch(API_BASE + '/api/ratings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -323,7 +324,7 @@
     commentsList.innerHTML = '<p class="no-comments">Cargando...</p>';
 
     try {
-      var res = await fetch('/api/ratings/' + season + '/' + episode);
+      var res = await fetch(API_BASE + '/api/ratings/' + season + '/' + episode);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
 
