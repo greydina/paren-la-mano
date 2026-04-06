@@ -1,0 +1,30 @@
+<View>
+  <Header value="Speaker Tagging - Paren La Mano"/>
+  <Audio name="audio" value="$audio_url"/>
+
+  <Header value="Transcripcion"/>
+  <Text name="transcript" value="$text" />
+
+  <Header value="Speaker detectado automaticamente"/>
+  <Text name="auto_speaker" value="$auto_speaker" />
+
+  <Header value="Quien habla?"/>
+  <Choices name="speaker" toName="audio" choice="single">
+    <Choice value="Luquitas"/>
+    <Choice value="Roberto"/>
+    <Choice value="Joaquin"/>
+    <Choice value="German"/>
+    <Choice value="Alfredo"/>
+    <Choice value="Jazmin"/>
+    <Choice value="Otra persona"/>
+    <Choice value="Voces mezcladas"/>
+    <Choice value="Ruido/Musica"/>
+    <Choice value="Audio grabado"/>
+  </Choices>
+
+  <Header value="Modificadores"/>
+  <Choices name="modifiers" toName="audio" choice="multiple">
+    <Choice value="Con ruido de fondo"/>
+    <Choice value="Voces superpuestas parciales"/>
+  </Choices>
+</View>
