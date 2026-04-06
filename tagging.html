@@ -8,201 +8,163 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127908;</text></svg>">
   <link rel="stylesheet" href="style.css">
   <style>
-    /* === TAGGING PAGE STYLES === */
-    .tagging-layout {
+    /* === TAGGING PAGE — FULL REWRITE === */
+
+    .tagging-page {
       max-width: var(--max-width);
       margin: 0 auto;
-      padding: 1rem 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      height: calc(100vh - 56px); /* subtract navbar height */
+      overflow: hidden;
     }
 
-    /* Top bar: episode selector */
-    .tagging-controls {
+    /* --- Fixed top section (never scrolls) --- */
+    .tagging-fixed {
+      flex-shrink: 0;
+      padding: 0.75rem 1rem 0;
       display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.6rem;
     }
 
-    .tagging-controls select {
+    /* Episode selector row */
+    .episode-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .episode-row select {
+      flex: 1;
+      min-width: 0;
       background: var(--bg-card);
       border: 1px solid var(--border);
       color: var(--text-primary);
-      padding: 0.7rem 1rem;
+      padding: 0.55rem 0.75rem;
       border-radius: var(--radius-sm);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-family: var(--font-body);
-      flex: 1;
-      min-width: 200px;
     }
 
-    .tagging-controls select:focus {
+    .episode-row select:focus {
       outline: none;
       border-color: var(--purple-bright);
     }
 
-    /* Progress bar */
-    .progress-container {
+    .progress-badge {
+      flex-shrink: 0;
+      font-family: var(--font-heading);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .progress-badge strong {
+      color: var(--purple-bright);
+    }
+
+    /* --- Player card --- */
+    .player-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 0.75rem 1rem;
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.4rem;
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-    }
-
-    .progress-header strong {
-      color: var(--purple-bright);
-      font-family: var(--font-heading);
-    }
-
-    .progress-bar-outer {
-      height: 6px;
-      background: var(--bg-secondary);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-bar-inner {
-      height: 100%;
-      background: linear-gradient(90deg, var(--purple-bright), var(--blue));
-      border-radius: 3px;
-      transition: width 0.4s ease;
-    }
-
-    .stats-row {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 0.5rem;
-    }
-
-    .stat-chip {
-      font-size: 0.72rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 12px;
-      background: rgba(183, 75, 236, 0.1);
-      border: 1px solid rgba(183, 75, 236, 0.2);
-      color: var(--text-secondary);
-      font-weight: 600;
-    }
-
-    .stat-chip .count {
-      color: var(--purple-bright);
-      font-family: var(--font-heading);
-    }
-
-    /* Sticky player panel */
-    .player-section {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem 1.25rem;
-      position: sticky;
-      top: 60px;
-      z-index: 90;
-    }
-
-    .player-top-row {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .player-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-      flex-wrap: wrap;
+      padding: 0.85rem 1rem;
+      display: none;
+      flex-direction: column;
       gap: 0.5rem;
     }
 
-    .player-segment-label {
-      font-family: var(--font-heading);
-      font-weight: 700;
-      color: var(--white);
-      font-size: 0.95rem;
+    .player-card.visible {
+      display: flex;
     }
 
-    .player-time {
-      color: var(--text-muted);
-      font-size: 0.82rem;
-      font-family: var(--font-heading);
-    }
-
-    .player-auto-speaker {
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.5rem;
-    }
-
-    .player-auto-speaker strong {
-      color: var(--purple-bright);
-    }
-
-    audio {
+    .player-card audio {
       width: 100%;
       height: 36px;
-      margin-bottom: 0.75rem;
       border-radius: var(--radius-sm);
     }
 
-    /* Tag buttons: compact pill-style rows */
-    .tag-row {
+    .player-meta {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
       align-items: center;
-    }
-
-    .tag-row + .tag-row {
-      margin-top: 0.35rem;
-    }
-
-    .tag-buttons {
-      display: flex;
+      gap: 0.6rem;
       flex-wrap: wrap;
-      gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+
+    .player-meta .auto-label {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+    }
+
+    .player-meta .auto-label strong {
+      font-family: var(--font-heading);
+    }
+
+    .player-meta .seg-id {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .player-meta .seg-range {
+      font-family: var(--font-heading);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .player-transcript {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.65rem;
+      line-height: 1.45;
+      max-height: 3.2em;
+      overflow: hidden;
+      display: none;
+    }
+
+    .player-transcript.visible {
+      display: block;
+    }
+
+    /* Tag grid: 2 rows x 5 */
+    .tag-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.3rem;
     }
 
     .tag-btn {
-      padding: 0.35rem 0.7rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.4rem 0.2rem;
       border: 2px solid var(--border);
-      border-radius: 20px;
+      border-radius: var(--radius-sm);
       background: var(--bg-secondary);
       color: var(--text-primary);
       font-family: var(--font-heading);
       font-weight: 700;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       cursor: pointer;
-      transition: all var(--transition);
+      transition: all 0.15s ease;
       text-align: center;
-      position: relative;
-      white-space: nowrap;
+      line-height: 1.2;
+      min-height: 38px;
     }
 
-    .tag-btn .shortcut {
-      display: inline-block;
-      font-size: 0.65rem;
+    .tag-btn .key {
+      font-size: 0.6rem;
       color: var(--text-muted);
-      margin-left: 0.2rem;
       opacity: 0.7;
+      margin-top: 1px;
     }
 
     .tag-btn:hover {
-      border-color: var(--purple-bright);
-      background: rgba(183, 75, 236, 0.15);
       transform: translateY(-1px);
     }
 
@@ -211,108 +173,119 @@
     }
 
     .tag-btn.selected {
-      border-color: var(--purple-bright);
-      background: var(--purple-bright);
-      color: var(--white);
+      color: #1a1a2e;
+      font-weight: 800;
     }
 
-    /* Speaker colors */
-    .speaker-luquitas { --speaker-color: #4ecdc4; }
-    .speaker-roberto { --speaker-color: #ff6b6b; }
-    .speaker-joaquin { --speaker-color: #ffd93d; }
-    .speaker-german { --speaker-color: #6bcb77; }
-    .speaker-alfredo { --speaker-color: #4d96ff; }
-    .speaker-jazmin { --speaker-color: #ff69b4; }
-    .speaker-otrapersona { --speaker-color: #9b59b6; }
-    .speaker-vocesmezcladas { --speaker-color: #e67e22; }
-    .speaker-ruidomusica { --speaker-color: #7f8c8d; }
-    .speaker-audiograbado { --speaker-color: #95a5a6; }
+    /* Speaker-specific colors */
+    .tag-btn[data-speaker="Luquitas"]       { border-color: #4ecdc4; }
+    .tag-btn[data-speaker="Luquitas"]:hover,
+    .tag-btn[data-speaker="Luquitas"].selected { background: #4ecdc4; border-color: #4ecdc4; color: #1a1a2e; }
 
-    .tag-btn.speaker-luquitas { border-color: #4ecdc4; }
-    .tag-btn.speaker-luquitas:hover, .tag-btn.speaker-luquitas.selected { background: #4ecdc4; color: #1a1a2e; border-color: #4ecdc4; }
-    .tag-btn.speaker-roberto { border-color: #ff6b6b; }
-    .tag-btn.speaker-roberto:hover, .tag-btn.speaker-roberto.selected { background: #ff6b6b; color: #1a1a2e; border-color: #ff6b6b; }
-    .tag-btn.speaker-joaquin { border-color: #ffd93d; }
-    .tag-btn.speaker-joaquin:hover, .tag-btn.speaker-joaquin.selected { background: #ffd93d; color: #1a1a2e; border-color: #ffd93d; }
-    .tag-btn.speaker-german { border-color: #6bcb77; }
-    .tag-btn.speaker-german:hover, .tag-btn.speaker-german.selected { background: #6bcb77; color: #1a1a2e; border-color: #6bcb77; }
-    .tag-btn.speaker-alfredo { border-color: #4d96ff; }
-    .tag-btn.speaker-alfredo:hover, .tag-btn.speaker-alfredo.selected { background: #4d96ff; color: #1a1a2e; border-color: #4d96ff; }
-    .tag-btn.speaker-jazmin { border-color: #ff69b4; }
-    .tag-btn.speaker-jazmin:hover, .tag-btn.speaker-jazmin.selected { background: #ff69b4; color: #1a1a2e; border-color: #ff69b4; }
-    .tag-btn.speaker-otrapersona { border-color: #9b59b6; }
-    .tag-btn.speaker-otrapersona:hover, .tag-btn.speaker-otrapersona.selected { background: #9b59b6; color: #fff; border-color: #9b59b6; }
-    .tag-btn.speaker-vocesmezcladas { border-color: #e67e22; }
-    .tag-btn.speaker-vocesmezcladas:hover, .tag-btn.speaker-vocesmezcladas.selected { background: #e67e22; color: #fff; border-color: #e67e22; }
-    .tag-btn.speaker-ruidomusica { border-color: #7f8c8d; }
-    .tag-btn.speaker-ruidomusica:hover, .tag-btn.speaker-ruidomusica.selected { background: #7f8c8d; color: #fff; border-color: #7f8c8d; }
-    .tag-btn.speaker-audiograbado { border-color: #95a5a6; }
-    .tag-btn.speaker-audiograbado:hover, .tag-btn.speaker-audiograbado.selected { background: #95a5a6; color: #1a1a2e; border-color: #95a5a6; }
+    .tag-btn[data-speaker="Roberto"]        { border-color: #ff6b6b; }
+    .tag-btn[data-speaker="Roberto"]:hover,
+    .tag-btn[data-speaker="Roberto"].selected  { background: #ff6b6b; border-color: #ff6b6b; color: #1a1a2e; }
 
-    /* Noise toggle */
-    .modifier-row {
+    .tag-btn[data-speaker="Joaquin"]        { border-color: #ffd93d; }
+    .tag-btn[data-speaker="Joaquin"]:hover,
+    .tag-btn[data-speaker="Joaquin"].selected  { background: #ffd93d; border-color: #ffd93d; color: #1a1a2e; }
+
+    .tag-btn[data-speaker="German"]         { border-color: #6bcb77; }
+    .tag-btn[data-speaker="German"]:hover,
+    .tag-btn[data-speaker="German"].selected   { background: #6bcb77; border-color: #6bcb77; color: #1a1a2e; }
+
+    .tag-btn[data-speaker="Alfredo"]        { border-color: #4d96ff; }
+    .tag-btn[data-speaker="Alfredo"]:hover,
+    .tag-btn[data-speaker="Alfredo"].selected  { background: #4d96ff; border-color: #4d96ff; color: #1a1a2e; }
+
+    .tag-btn[data-speaker="Jazmin"]         { border-color: #ff69b4; }
+    .tag-btn[data-speaker="Jazmin"]:hover,
+    .tag-btn[data-speaker="Jazmin"].selected   { background: #ff69b4; border-color: #ff69b4; color: #1a1a2e; }
+
+    .tag-btn[data-speaker="Otra persona"]   { border-color: #9b59b6; }
+    .tag-btn[data-speaker="Otra persona"]:hover,
+    .tag-btn[data-speaker="Otra persona"].selected { background: #9b59b6; border-color: #9b59b6; color: #fff; }
+
+    .tag-btn[data-speaker="Voces mezcladas"] { border-color: #e67e22; }
+    .tag-btn[data-speaker="Voces mezcladas"]:hover,
+    .tag-btn[data-speaker="Voces mezcladas"].selected { background: #e67e22; border-color: #e67e22; color: #fff; }
+
+    .tag-btn[data-speaker="Ruido/Musica"]   { border-color: #7f8c8d; }
+    .tag-btn[data-speaker="Ruido/Musica"]:hover,
+    .tag-btn[data-speaker="Ruido/Musica"].selected { background: #7f8c8d; border-color: #7f8c8d; color: #fff; }
+
+    .tag-btn[data-speaker="Audio grabado"]  { border-color: #95a5a6; }
+    .tag-btn[data-speaker="Audio grabado"]:hover,
+    .tag-btn[data-speaker="Audio grabado"].selected { background: #95a5a6; border-color: #95a5a6; color: #1a1a2e; }
+
+    /* Noise checkbox + nav row */
+    .controls-row {
       display: flex;
-      gap: 0.35rem;
       align-items: center;
+      gap: 0.5rem;
     }
+
     .noise-toggle {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.7rem;
+      gap: 0.35rem;
+      padding: 0.3rem 0.65rem;
       border: 2px solid var(--border);
-      border-radius: 20px;
+      border-radius: var(--radius-sm);
       background: var(--bg-secondary);
       color: var(--text-secondary);
       font-family: var(--font-heading);
       font-weight: 700;
       font-size: 0.75rem;
       cursor: pointer;
-      transition: all var(--transition);
+      transition: all 0.15s ease;
+      user-select: none;
     }
+
     .noise-toggle:hover { border-color: #e67e22; }
+
     .noise-toggle.active {
       border-color: #e67e22;
       background: rgba(230, 126, 34, 0.2);
       color: #e67e22;
     }
+
     .noise-toggle input { display: none; }
-    .noise-check { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
-    .noise-toggle.active .noise-check { border-color: #e67e22; background: #e67e22; color: #1a1a2e; }
 
-    /* Section labels - inline */
-    .tag-section-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      font-weight: 600;
-      margin-right: 0.25rem;
-      white-space: nowrap;
-    }
-
-    /* Navigation buttons */
-    .nav-buttons {
+    .noise-box {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-radius: 3px;
       display: flex;
-      gap: 0.35rem;
-      margin-left: auto;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      line-height: 1;
     }
+
+    .noise-toggle.active .noise-box {
+      border-color: #e67e22;
+      background: #e67e22;
+      color: #1a1a2e;
+    }
+
+    .nav-spacer { flex: 1; }
 
     .nav-btn {
-      padding: 0.35rem 0.75rem;
+      padding: 0.35rem 0.85rem;
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: var(--radius-sm);
       background: var(--bg-secondary);
       color: var(--text-secondary);
       font-family: var(--font-heading);
       font-weight: 700;
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       cursor: pointer;
-      transition: all var(--transition);
-      text-align: center;
+      transition: all 0.15s ease;
     }
 
-    .nav-btn:hover {
+    .nav-btn:hover:not(:disabled) {
       border-color: var(--purple-bright);
       color: var(--white);
     }
@@ -322,136 +295,149 @@
       cursor: not-allowed;
     }
 
-    /* Bottom controls row (tag rows + nav + noise) */
-    .player-controls-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: flex-start;
+    /* Shortcuts hint (single line) */
+    .shortcuts-hint {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      padding: 0.15rem 0;
+      text-align: center;
     }
 
-    .player-tags-area {
+    .shortcuts-hint kbd {
+      display: inline-block;
+      padding: 0.05rem 0.3rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-family: var(--font-heading);
+      font-size: 0.62rem;
+      font-weight: 700;
+    }
+
+    /* --- Scrollable segment list --- */
+    .segment-scroll {
       flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
+      overflow-y: auto;
+      padding: 0 1rem 0.5rem;
+      min-height: 0;
     }
 
-    .player-actions-area {
-      display: flex;
-      gap: 0.35rem;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    /* Segment list */
     .segments-list {
       display: flex;
       flex-direction: column;
-      gap: 0.3rem;
+      gap: 2px;
     }
 
     .segment-item {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.3rem 0.6rem;
-      padding: 0.5rem 0.75rem;
-      border-radius: var(--radius-sm);
-      background: var(--bg-card);
-      border: 1px solid transparent;
-      cursor: pointer;
-      transition: all var(--transition);
-      font-size: 0.82rem;
-      overflow: hidden;
-    }
-
-    .seg-meta {
-      display: flex;
       align-items: center;
       gap: 0.5rem;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .seg-text {
-      width: 100%;
-      font-size: 0.76rem;
-      color: var(--text-muted);
-      line-height: 1.4;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      margin-top: 0.15rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      font-size: 0.8rem;
+      min-height: 36px;
     }
 
     .segment-item:hover {
       background: var(--bg-card-hover);
-      border-color: rgba(183, 75, 236, 0.2);
     }
 
     .segment-item.active {
-      border-color: var(--purple-bright);
+      border-left-color: var(--purple-bright);
       background: rgba(183, 75, 236, 0.12);
     }
 
     .segment-item.tagged {
-      border-left: 3px solid var(--tagged-color, var(--purple-bright));
+      border-left-color: var(--tagged-color, var(--purple-bright));
+    }
+
+    .segment-item.active.tagged {
+      border-left-color: var(--purple-bright);
+      box-shadow: inset 3px 0 0 0 var(--tagged-color, var(--purple-bright));
     }
 
     .seg-num {
       font-family: var(--font-heading);
       font-weight: 700;
       color: var(--text-muted);
-      font-size: 0.75rem;
+      font-size: 0.72rem;
+      width: 2.8em;
       flex-shrink: 0;
     }
 
     .seg-time {
-      color: var(--text-secondary);
       font-family: var(--font-heading);
-      font-size: 0.75rem;
-      flex-shrink: 0;
-    }
-
-    .seg-speaker {
-      font-weight: 600;
-      font-size: 0.75rem;
-      padding: 0.1rem 0.45rem;
-      border-radius: 8px;
-      background: rgba(183, 75, 236, 0.12);
       color: var(--text-secondary);
-      white-space: nowrap;
+      font-size: 0.72rem;
       flex-shrink: 0;
+      width: 6.5em;
     }
 
-    .seg-tag-status {
-      margin-left: auto;
-      font-size: 0.82rem;
-      flex-shrink: 0;
-    }
-
-    .seg-tagged-label {
+    .seg-speaker-badge {
+      font-weight: 600;
       font-size: 0.7rem;
-      font-weight: 700;
-      padding: 0.1rem 0.4rem;
+      padding: 0.08rem 0.4rem;
       border-radius: 6px;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
-    /* Pagination */
-    .pagination {
+    .seg-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .seg-tag-label {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.08rem 0.4rem;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    .seg-active-dot {
+      flex-shrink: 0;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--purple-bright);
+      display: none;
+    }
+
+    .segment-item.active .seg-active-dot {
+      display: block;
+    }
+
+    /* Pagination row */
+    .pagination-row {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 0;
+      gap: 0.75rem;
+      padding: 0.5rem 1rem 0.35rem;
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      display: none;
     }
 
-    .pagination button {
-      padding: 0.4rem 0.85rem;
+    .pagination-row.visible {
+      display: flex;
+    }
+
+    .pagination-row button {
+      padding: 0.35rem 0.75rem;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       background: var(--bg-card);
@@ -460,49 +446,31 @@
       font-weight: 700;
       font-size: 0.78rem;
       cursor: pointer;
-      transition: all var(--transition);
+      transition: all 0.15s ease;
     }
 
-    .pagination button:hover:not(:disabled) {
+    .pagination-row button:hover:not(:disabled) {
       border-color: var(--purple-bright);
       color: var(--white);
     }
 
-    .pagination button:disabled {
+    .pagination-row button:disabled {
       opacity: 0.3;
       cursor: not-allowed;
     }
 
-    .pagination .page-info {
+    .page-info {
       color: var(--text-muted);
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-family: var(--font-heading);
     }
 
-    /* Keyboard shortcuts help */
-    .shortcuts-help {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.6rem 0.85rem;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      line-height: 1.7;
+    /* Footer override: compact */
+    .footer {
+      flex-shrink: 0;
     }
 
-    .shortcuts-help kbd {
-      display: inline-block;
-      padding: 0.05rem 0.35rem;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: var(--bg-secondary);
-      color: var(--text-secondary);
-      font-family: var(--font-heading);
-      font-size: 0.68rem;
-      font-weight: 700;
-    }
-
-    /* Empty state */
+    /* Empty / loading states */
     .empty-state {
       text-align: center;
       padding: 3rem 1.5rem;
@@ -515,66 +483,103 @@
       margin-bottom: 0.5rem;
     }
 
-    /* Loading */
     .loading-spinner {
       text-align: center;
       padding: 2rem;
       color: var(--text-muted);
     }
 
-    /* Main content area */
-    .main-content {
+    /* Stats chips row */
+    .stats-row {
       display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      padding: 0.15rem 0;
     }
 
-    /* Responsive: mobile */
+    .stat-chip {
+      font-size: 0.68rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      background: rgba(183, 75, 236, 0.1);
+      border: 1px solid rgba(183, 75, 236, 0.15);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .stat-chip .count {
+      font-family: var(--font-heading);
+    }
+
+    /* Progress bar (thin, below episode row) */
+    .progress-bar-wrap {
+      height: 4px;
+      background: var(--bg-secondary);
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar-wrap.visible {
+      display: block;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple-bright), var(--blue));
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    /* --- Responsive --- */
     @media (max-width: 640px) {
-      .tagging-layout {
-        padding: 0.5rem;
-        gap: 0.75rem;
+      .tagging-page {
+        height: calc(100vh - 52px);
       }
 
-      .player-section {
-        top: 52px;
-        padding: 0.75rem;
-        border-radius: var(--radius-sm);
+      .tagging-fixed {
+        padding: 0.5rem 0.6rem 0;
+        gap: 0.45rem;
       }
 
-      audio {
-        height: 32px;
-        margin-bottom: 0.5rem;
+      .tag-grid {
+        gap: 0.25rem;
       }
 
       .tag-btn {
-        padding: 0.3rem 0.55rem;
-        font-size: 0.72rem;
+        padding: 0.35rem 0.15rem;
+        font-size: 0.68rem;
+        min-height: 34px;
       }
 
-      .player-controls-row {
-        flex-direction: column;
+      .tag-btn .key {
+        display: none;
       }
 
-      .nav-buttons {
-        margin-left: 0;
-        width: 100%;
-      }
-
-      .nav-btn {
-        flex: 1;
+      .segment-scroll {
+        padding: 0 0.6rem 0.3rem;
       }
 
       .segment-item {
-        padding: 0.4rem 0.5rem;
+        padding: 0.35rem 0.45rem;
+        gap: 0.35rem;
+        font-size: 0.75rem;
       }
 
       .seg-time {
-        font-size: 0.7rem;
+        display: none;
       }
 
-      .shortcuts-help {
+      .shortcuts-hint {
         display: none;
+      }
+
+      .player-card {
+        padding: 0.65rem 0.75rem;
+      }
+
+      .player-card audio {
+        height: 32px;
       }
     }
   </style>
@@ -598,100 +603,95 @@
     </div>
   </nav>
 
-  <section class="page-header">
-    <h1>Speaker <span style="color: var(--purple-bright)">Tagging</span></h1>
-    <p>Escucha segmentos y etiqueta al speaker correcto para mejorar la diarizacion</p>
-  </section>
+  <div class="tagging-page">
+    <!-- FIXED TOP SECTION -->
+    <div class="tagging-fixed">
 
-  <div class="tagging-layout">
-    <!-- Top: episode selector + progress -->
-    <div class="tagging-controls">
-      <select id="episode-select">
-        <option value="">Cargando episodios...</option>
-      </select>
-    </div>
+      <!-- Episode selector + progress badge -->
+      <div class="episode-row">
+        <select id="episode-select">
+          <option value="">Cargando episodios...</option>
+        </select>
+        <span class="progress-badge" id="progress-badge" style="display:none">
+          <strong id="progress-tagged">0</strong>/<span id="progress-total">0</span>
+          (<strong id="progress-pct">0%</strong>)
+        </span>
+      </div>
 
-    <div class="progress-container" id="progress-container" style="display:none">
-      <div class="progress-header">
-        <span>Progreso</span>
-        <strong id="progress-text">0%</strong>
+      <!-- Thin progress bar -->
+      <div class="progress-bar-wrap" id="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar-fill" style="width:0%"></div>
       </div>
-      <div class="progress-bar-outer">
-        <div class="progress-bar-inner" id="progress-bar" style="width: 0%"></div>
+
+      <!-- Player card -->
+      <div class="player-card" id="player-card">
+        <audio id="audio-player" controls preload="none"></audio>
+
+        <div class="player-meta">
+          <span class="auto-label">Auto: <strong id="player-auto-speaker">--</strong></span>
+          <span class="seg-id" id="player-seg-id">#--</span>
+          <span class="seg-range" id="player-seg-range">--:-- - --:--</span>
+        </div>
+
+        <div class="player-transcript" id="player-transcript"></div>
+
+        <!-- Tag buttons: 2 rows x 5 -->
+        <div class="tag-grid" id="tag-grid">
+          <button class="tag-btn" data-speaker="Luquitas">Luqui<span class="key">1</span></button>
+          <button class="tag-btn" data-speaker="Roberto">Roberto<span class="key">2</span></button>
+          <button class="tag-btn" data-speaker="Joaquin">Joaquin<span class="key">3</span></button>
+          <button class="tag-btn" data-speaker="German">German<span class="key">4</span></button>
+          <button class="tag-btn" data-speaker="Alfredo">Alfredo<span class="key">5</span></button>
+          <button class="tag-btn" data-speaker="Jazmin">Jazmin<span class="key">6</span></button>
+          <button class="tag-btn" data-speaker="Otra persona">Otra<span class="key">7</span></button>
+          <button class="tag-btn" data-speaker="Voces mezcladas">Mezclad<span class="key">8</span></button>
+          <button class="tag-btn" data-speaker="Ruido/Musica">Ruido<span class="key">9</span></button>
+          <button class="tag-btn" data-speaker="Audio grabado">Grabado<span class="key">0</span></button>
+        </div>
+
+        <!-- Noise toggle + nav -->
+        <div class="controls-row">
+          <label class="noise-toggle" id="noise-toggle">
+            <input type="checkbox" id="noise-check">
+            <span class="noise-box">&#10003;</span>
+            Con ruido (N)
+          </label>
+          <span class="nav-spacer"></span>
+          <button class="nav-btn" id="btn-prev" disabled>&#9664; Anterior</button>
+          <button class="nav-btn" id="btn-next" disabled>Siguiente &#9654;</button>
+        </div>
       </div>
+
+      <!-- Shortcuts hint -->
+      <div class="shortcuts-hint">
+        <kbd>1</kbd>-<kbd>6</kbd> speakers
+        <kbd>7</kbd>-<kbd>0</kbd> otros
+        <kbd>N</kbd> ruido
+        <kbd>Space</kbd> play
+        <kbd>R</kbd> replay
+        <kbd>&#8593;</kbd><kbd>&#8595;</kbd> navegar
+        <kbd>&#8592;</kbd><kbd>&#8594;</kbd> paginas
+      </div>
+
+      <!-- Stats chips -->
       <div class="stats-row" id="stats-row"></div>
     </div>
 
-    <!-- Sticky player panel -->
-    <div class="player-section" id="player-section" style="display:none">
-      <div class="player-info">
-        <span class="player-segment-label" id="player-label">Segmento #--</span>
-        <span class="player-time" id="player-time">--:-- - --:--</span>
-        <span class="player-auto-speaker">Auto: <strong id="player-auto-speaker">--</strong></span>
-      </div>
-      <div id="player-text" style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.5rem; padding:0.5rem; background:var(--bg-secondary); border-radius:var(--radius-sm); line-height:1.4; max-height:3.5em; overflow-y:auto; display:none;"></div>
-      <audio id="audio-player" controls preload="none"></audio>
-      <div class="player-controls-row">
-        <div class="player-tags-area">
-          <div class="tag-row">
-            <span class="tag-section-label">Protagonistas:</span>
-            <div class="tag-buttons" id="tag-buttons">
-              <button class="tag-btn speaker-luquitas" data-speaker="Luquitas">Luquitas <span class="shortcut">1</span></button>
-              <button class="tag-btn speaker-roberto" data-speaker="Roberto">Roberto <span class="shortcut">2</span></button>
-              <button class="tag-btn speaker-joaquin" data-speaker="Joaquin">Joaquin <span class="shortcut">3</span></button>
-              <button class="tag-btn speaker-german" data-speaker="German">German <span class="shortcut">4</span></button>
-              <button class="tag-btn speaker-alfredo" data-speaker="Alfredo">Alfredo <span class="shortcut">5</span></button>
-              <button class="tag-btn speaker-jazmin" data-speaker="Jazmin">Jazmin <span class="shortcut">6</span></button>
-            </div>
-          </div>
-          <div class="tag-row">
-            <span class="tag-section-label">Audio:</span>
-            <div class="tag-buttons">
-              <button class="tag-btn speaker-otrapersona" data-speaker="Otra persona">Otra <span class="shortcut">7</span></button>
-              <button class="tag-btn speaker-vocesmezcladas" data-speaker="Voces mezcladas">Mezcladas <span class="shortcut">8</span></button>
-              <button class="tag-btn speaker-ruidomusica" data-speaker="Ruido/Musica">Ruido <span class="shortcut">9</span></button>
-              <button class="tag-btn speaker-audiograbado" data-speaker="Audio grabado">Grabado <span class="shortcut">0</span></button>
-            </div>
-            <div class="modifier-row">
-              <label class="noise-toggle" id="noise-toggle">
-                <input type="checkbox" id="noise-check">
-                <span class="noise-check">&#10003;</span>
-                Ruido <span class="shortcut">N</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div class="nav-buttons">
-          <button class="nav-btn" id="btn-prev" disabled>Ant</button>
-          <button class="nav-btn" id="btn-next" disabled>Sig</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="shortcuts-help">
-      <strong>Atajos:</strong>
-      <kbd>1</kbd>-<kbd>6</kbd> Protagonistas &nbsp;
-      <kbd>7</kbd>-<kbd>0</kbd> Condiciones &nbsp;
-      <kbd>N</kbd> Ruido &nbsp;
-      <kbd>Space</kbd> Play/Pause &nbsp;
-      <kbd>R</kbd> Replay &nbsp;
-      <kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> Navegar &nbsp;
-      <kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> Paginas
-    </div>
-
-    <!-- Segment list -->
-    <div class="main-content">
+    <!-- SCROLLABLE SEGMENT LIST -->
+    <div class="segment-scroll" id="segment-scroll">
       <div id="segments-container">
         <div class="empty-state">
           <h3>Selecciona un episodio</h3>
           <p>Elegi un episodio del selector para ver los segmentos de diarizacion</p>
         </div>
       </div>
-      <div class="pagination" id="pagination" style="display:none">
-        <button id="page-prev" disabled>Anterior</button>
-        <span class="page-info" id="page-info">1 / 1</span>
-        <button id="page-next" disabled>Siguiente</button>
-      </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination-row" id="pagination-row">
+      <button id="page-prev" disabled>&#9664; Anterior</button>
+      <span class="page-info" id="page-info">1 / 1</span>
+      <button id="page-next" disabled>Siguiente &#9654;</button>
     </div>
   </div>
 
@@ -709,8 +709,15 @@
   </footer>
 
   <script>
-    const API = 'http://' + window.location.hostname + ':8889';
-    const SPEAKERS = ['Luquitas', 'Roberto', 'Joaquin', 'German', 'Alfredo', 'Jazmin', 'Otra persona', 'Voces mezcladas', 'Ruido/Musica', 'Audio grabado'];
+    // --- Configuration ---
+    const API = window.location.protocol + '//' + window.location.hostname + ':8889';
+    const PER_PAGE = 50;
+
+    const SPEAKERS = [
+      'Luquitas', 'Roberto', 'Joaquin', 'German', 'Alfredo',
+      'Jazmin', 'Otra persona', 'Voces mezcladas', 'Ruido/Musica', 'Audio grabado'
+    ];
+
     const SPEAKER_COLORS = {
       'Luquitas': '#4ecdc4',
       'Roberto': '#ff6b6b',
@@ -724,33 +731,38 @@
       'Audio grabado': '#95a5a6',
     };
 
-    // State
+    // --- State ---
     let currentEpisode = null;
     let currentPage = 1;
     let totalPages = 1;
     let segments = [];
-    let activeSegmentIdx = -1; // index within current page
+    let activeIdx = -1;
     let episodes = [];
 
-    // DOM refs
+    // --- DOM refs ---
     const episodeSelect = document.getElementById('episode-select');
-    const progressContainer = document.getElementById('progress-container');
-    const progressText = document.getElementById('progress-text');
-    const progressBar = document.getElementById('progress-bar');
+    const progressBadge = document.getElementById('progress-badge');
+    const progressTagged = document.getElementById('progress-tagged');
+    const progressTotal = document.getElementById('progress-total');
+    const progressPct = document.getElementById('progress-pct');
+    const progressBarWrap = document.getElementById('progress-bar-wrap');
+    const progressBarFill = document.getElementById('progress-bar-fill');
     const statsRow = document.getElementById('stats-row');
-    const playerSection = document.getElementById('player-section');
-    const playerLabel = document.getElementById('player-label');
-    const playerTime = document.getElementById('player-time');
-    const playerAutoSpeaker = document.getElementById('player-auto-speaker');
+    const playerCard = document.getElementById('player-card');
     const audioPlayer = document.getElementById('audio-player');
+    const playerAutoSpeaker = document.getElementById('player-auto-speaker');
+    const playerSegId = document.getElementById('player-seg-id');
+    const playerSegRange = document.getElementById('player-seg-range');
+    const playerTranscript = document.getElementById('player-transcript');
+    const segmentScroll = document.getElementById('segment-scroll');
     const segmentsContainer = document.getElementById('segments-container');
-    const pagination = document.getElementById('pagination');
+    const paginationRow = document.getElementById('pagination-row');
     const pageInfo = document.getElementById('page-info');
     const pagePrev = document.getElementById('page-prev');
     const pageNext = document.getElementById('page-next');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
-    const tagButtons = document.querySelectorAll('.tag-btn');
+    const tagButtons = document.querySelectorAll('#tag-grid .tag-btn');
     const noiseToggle = document.getElementById('noise-toggle');
     const noiseCheck = document.getElementById('noise-check');
 
@@ -762,32 +774,19 @@
       return m + ':' + String(s).padStart(2, '0');
     }
 
-    function speakerClass(name) {
-      const base = name.toLowerCase().replace(/[^a-z]/g, '');
-      if (base.startsWith('luquitas')) return 'luquitas';
-      if (base.startsWith('roberto')) return 'roberto';
-      if (base.startsWith('joaquin')) return 'joaquin';
-      if (base.startsWith('german')) return 'german';
-      if (base.startsWith('alfredo')) return 'alfredo';
-      if (base.startsWith('jazmin')) return 'jazmin';
-      if (base.startsWith('otrapersona')) return 'otrapersona';
-      if (base.startsWith('vocesmezcladas')) return 'vocesmezcladas';
-      if (base.startsWith('ruidomusica') || base.startsWith('ruido')) return 'ruidomusica';
-      if (base.startsWith('audiograbado')) return 'audiograbado';
-      return 'otrapersona';
-    }
-
     function speakerColor(name) {
-      // Handle "+ruido" suffix
-      const baseName = name.replace(/ \+ruido$/, '');
-      // Direct match first
-      if (SPEAKER_COLORS[baseName]) return SPEAKER_COLORS[baseName];
-      // Fallback via class
-      const cls = speakerClass(baseName);
-      return SPEAKER_COLORS[SPEAKERS.find(s => speakerClass(s) === cls)] || '#9b59b6';
+      if (!name) return '#9b59b6';
+      const base = name.replace(/ \+ruido$/, '');
+      if (SPEAKER_COLORS[base]) return SPEAKER_COLORS[base];
+      // Fuzzy match
+      const lower = base.toLowerCase().replace(/[^a-z]/g, '');
+      for (const [sp, col] of Object.entries(SPEAKER_COLORS)) {
+        if (sp.toLowerCase().replace(/[^a-z]/g, '').startsWith(lower.slice(0, 5))) return col;
+      }
+      return '#9b59b6';
     }
 
-    // --- API calls ---
+    // --- API ---
     async function fetchEpisodes() {
       try {
         const res = await fetch(API + '/api/tagging/episodes');
@@ -796,19 +795,21 @@
         episodes.forEach(ep => {
           const opt = document.createElement('option');
           opt.value = ep.episode_id;
-          opt.textContent = ep.episode_id + ' (' + ep.segment_count + ' segmentos)';
+          opt.textContent = ep.episode_id + ' (' + ep.segment_count + ' seg)';
           episodeSelect.appendChild(opt);
         });
       } catch (e) {
         episodeSelect.innerHTML = '<option value="">Error cargando episodios</option>';
-        console.error('Failed to load episodes:', e);
+        console.error('fetchEpisodes:', e);
       }
     }
 
     async function fetchSegments(episodeId, page) {
       segmentsContainer.innerHTML = '<div class="loading-spinner">Cargando segmentos...</div>';
       try {
-        const res = await fetch(API + '/api/tagging/segments?episode_id=' + encodeURIComponent(episodeId) + '&page=' + page + '&per_page=30');
+        const url = API + '/api/tagging/segments?episode_id=' + encodeURIComponent(episodeId)
+          + '&page=' + page + '&per_page=' + PER_PAGE;
+        const res = await fetch(url);
         const data = await res.json();
         segments = data.segments;
         totalPages = data.total_pages;
@@ -817,7 +818,7 @@
         renderPagination();
       } catch (e) {
         segmentsContainer.innerHTML = '<div class="empty-state"><h3>Error</h3><p>No se pudieron cargar los segmentos</p></div>';
-        console.error(e);
+        console.error('fetchSegments:', e);
       }
     }
 
@@ -827,13 +828,13 @@
         const data = await res.json();
         renderStats(data);
       } catch (e) {
-        console.error('Failed to load stats:', e);
+        console.error('fetchStats:', e);
       }
     }
 
     async function submitTag(speaker) {
-      if (activeSegmentIdx < 0 || !currentEpisode) return;
-      const seg = segments[activeSegmentIdx];
+      if (activeIdx < 0 || !currentEpisode) return;
+      const seg = segments[activeIdx];
       if (!seg) return;
 
       const hasNoise = noiseCheck.checked;
@@ -854,16 +855,16 @@
         const data = await res.json();
         if (data.success) {
           seg.tagged_speaker = fullTag;
+          updateTagHighlight(fullTag);
           renderSegments();
-          updateTagButtonState(fullTag);
           fetchStats();
-          // Auto-advance
-          if (activeSegmentIdx < segments.length - 1) {
-            selectSegment(activeSegmentIdx + 1);
+          // Auto-advance to next segment
+          if (activeIdx < segments.length - 1) {
+            selectSegment(activeIdx + 1);
           }
         }
       } catch (e) {
-        console.error('Failed to submit tag:', e);
+        console.error('submitTag:', e);
       }
     }
 
@@ -878,58 +879,60 @@
       list.className = 'segments-list';
 
       segments.forEach((seg, i) => {
-        const item = document.createElement('div');
-        item.className = 'segment-item';
-        if (i === activeSegmentIdx) item.classList.add('active');
+        const row = document.createElement('div');
+        row.className = 'segment-item';
+        if (i === activeIdx) row.classList.add('active');
         if (seg.tagged_speaker) {
-          item.classList.add('tagged');
-          item.style.setProperty('--tagged-color', speakerColor(seg.tagged_speaker));
+          row.classList.add('tagged');
+          row.style.setProperty('--tagged-color', speakerColor(seg.tagged_speaker));
         }
 
+        // Segment number
         const num = document.createElement('span');
         num.className = 'seg-num';
         num.textContent = '#' + seg.index;
 
+        // Time range
         const time = document.createElement('span');
         time.className = 'seg-time';
-        time.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
+        time.textContent = fmtTime(seg.start) + '-' + fmtTime(seg.end);
 
-        const speaker = document.createElement('span');
-        speaker.className = 'seg-speaker';
-        speaker.style.color = speakerColor(seg.speaker);
-        speaker.style.borderColor = speakerColor(seg.speaker);
-        speaker.style.background = speakerColor(seg.speaker) + '18';
-        speaker.textContent = seg.speaker;
+        // Auto speaker badge
+        const badge = document.createElement('span');
+        badge.className = 'seg-speaker-badge';
+        const col = speakerColor(seg.speaker);
+        badge.style.color = col;
+        badge.style.background = col + '18';
+        badge.textContent = seg.speaker;
 
-        const status = document.createElement('span');
-        status.className = 'seg-tag-status';
+        // Transcript text
+        const text = document.createElement('span');
+        text.className = 'seg-text';
+        text.textContent = seg.text ? '"' + seg.text + '"' : '';
+
+        // Tagged label (right side)
+        const tagLabel = document.createElement('span');
         if (seg.tagged_speaker) {
-          const label = document.createElement('span');
-          label.className = 'seg-tagged-label';
-          label.style.background = speakerColor(seg.tagged_speaker) + '30';
-          label.style.color = speakerColor(seg.tagged_speaker);
-          label.textContent = seg.tagged_speaker;
-          status.appendChild(label);
+          tagLabel.className = 'seg-tag-label';
+          const tc = speakerColor(seg.tagged_speaker);
+          tagLabel.style.color = tc;
+          tagLabel.style.background = tc + '25';
+          tagLabel.textContent = seg.tagged_speaker;
         }
 
-        const meta = document.createElement('div');
-        meta.className = 'seg-meta';
-        meta.appendChild(num);
-        meta.appendChild(time);
-        meta.appendChild(speaker);
-        meta.appendChild(status);
-        item.appendChild(meta);
+        // Active dot
+        const dot = document.createElement('span');
+        dot.className = 'seg-active-dot';
 
-        // Show text preview if available
-        if (seg.text) {
-          const textEl = document.createElement('div');
-          textEl.className = 'seg-text';
-          textEl.textContent = seg.text;
-          item.appendChild(textEl);
-        }
+        row.appendChild(num);
+        row.appendChild(time);
+        row.appendChild(badge);
+        row.appendChild(text);
+        if (seg.tagged_speaker) row.appendChild(tagLabel);
+        row.appendChild(dot);
 
-        item.addEventListener('click', () => selectSegment(i));
-        list.appendChild(item);
+        row.addEventListener('click', () => selectSegment(i));
+        list.appendChild(row);
       });
 
       segmentsContainer.innerHTML = '';
@@ -937,33 +940,39 @@
     }
 
     function renderPagination() {
-      pagination.style.display = 'flex';
+      if (totalPages <= 1) {
+        paginationRow.classList.remove('visible');
+        return;
+      }
+      paginationRow.classList.add('visible');
       pageInfo.textContent = currentPage + ' / ' + totalPages;
       pagePrev.disabled = currentPage <= 1;
       pageNext.disabled = currentPage >= totalPages;
     }
 
     function renderStats(data) {
-      progressContainer.style.display = 'block';
-
-      // Find current episode stats
-      let epProgress = data.progress_percent;
-      let epTagged = data.total_tagged;
-      let epTotal = data.total_segments;
+      // Episode-specific stats
+      let pct = data.progress_percent;
+      let tagged = data.total_tagged;
+      let total = data.total_segments;
 
       if (currentEpisode) {
-        const epStat = data.episodes.find(e => e.episode_id === currentEpisode);
-        if (epStat) {
-          epProgress = epStat.progress;
-          epTagged = epStat.tagged;
-          epTotal = epStat.total_segments;
+        const ep = data.episodes.find(e => e.episode_id === currentEpisode);
+        if (ep) {
+          pct = ep.progress;
+          tagged = ep.tagged;
+          total = ep.total_segments;
         }
       }
 
-      progressText.textContent = epTagged + ' / ' + epTotal + ' (' + epProgress + '%)';
-      progressBar.style.width = epProgress + '%';
+      progressBadge.style.display = '';
+      progressTagged.textContent = tagged;
+      progressTotal.textContent = total;
+      progressPct.textContent = pct + '%';
+      progressBarWrap.classList.add('visible');
+      progressBarFill.style.width = pct + '%';
 
-      // Speaker counts
+      // Speaker count chips
       statsRow.innerHTML = '';
       const counts = data.speaker_counts || {};
       SPEAKERS.forEach(sp => {
@@ -975,115 +984,120 @@
         }
       });
 
-      if (data.total_tagged > 0) {
-        const agreeChip = document.createElement('span');
-        agreeChip.className = 'stat-chip';
-        agreeChip.innerHTML = 'Acuerdo: <span class="count">' + Math.round(data.agreement_rate * 100) + '%</span>';
-        statsRow.appendChild(agreeChip);
+      if (data.total_tagged > 0 && data.agreement_rate != null) {
+        const chip = document.createElement('span');
+        chip.className = 'stat-chip';
+        chip.innerHTML = 'Acuerdo: <span class="count">' + Math.round(data.agreement_rate * 100) + '%</span>';
+        statsRow.appendChild(chip);
       }
     }
 
-    function updateTagButtonState(speaker) {
+    function updateTagHighlight(speaker) {
+      const base = speaker ? speaker.replace(/ \+ruido$/, '') : '';
       tagButtons.forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.speaker === speaker);
+        btn.classList.toggle('selected', btn.dataset.speaker === base);
       });
     }
 
     // --- Segment selection ---
     function selectSegment(idx) {
       if (idx < 0 || idx >= segments.length) return;
-      activeSegmentIdx = idx;
+      activeIdx = idx;
       const seg = segments[idx];
 
-      // Update player
-      playerSection.style.display = 'block';
-      playerLabel.textContent = 'Segmento #' + seg.index;
-      playerTime.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
+      // Show player
+      playerCard.classList.add('visible');
+
+      // Update player info
+      playerSegId.textContent = '#' + seg.index;
+      playerSegRange.textContent = fmtTime(seg.start) + ' - ' + fmtTime(seg.end);
       playerAutoSpeaker.textContent = seg.speaker;
       playerAutoSpeaker.style.color = speakerColor(seg.speaker);
 
-      // Show transcript text
-      const playerText = document.getElementById('player-text');
+      // Transcript
       if (seg.text) {
-        playerText.textContent = '"' + seg.text + '"';
-        playerText.style.display = 'block';
+        playerTranscript.textContent = '"' + seg.text + '"';
+        playerTranscript.classList.add('visible');
       } else {
-        playerText.style.display = 'none';
+        playerTranscript.classList.remove('visible');
       }
 
-      // Load audio
+      // Load & play audio
       const audioUrl = API + '/api/tagging/audio/' + currentEpisode + '?start=' + seg.start + '&end=' + seg.end;
       audioPlayer.src = audioUrl;
       audioPlayer.load();
-      audioPlayer.play().catch(() => {});
+      audioPlayer.play().catch(function() {});
 
-      // Update tag button state
-      updateTagButtonState(seg.tagged_speaker || '');
+      // Highlight current tag
+      updateTagHighlight(seg.tagged_speaker || '');
 
-      // Update nav buttons
-      btnPrev.disabled = activeSegmentIdx <= 0;
-      btnNext.disabled = activeSegmentIdx >= segments.length - 1;
+      // Noise checkbox state — match current segment's tag
+      const hasNoise = (seg.tagged_speaker || '').includes('+ruido');
+      noiseCheck.checked = hasNoise;
+      noiseToggle.classList.toggle('active', hasNoise);
 
-      // Update visual
+      // Nav buttons
+      btnPrev.disabled = activeIdx <= 0;
+      btnNext.disabled = activeIdx >= segments.length - 1;
+
+      // Re-render list to update active state
       renderSegments();
 
       // Scroll active segment into view
-      setTimeout(() => {
-        const activeEl = segmentsContainer.querySelector('.segment-item.active');
-        if (activeEl) {
-          activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }, 50);
+      requestAnimationFrame(function() {
+        const el = segmentsContainer.querySelector('.segment-item.active');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
     }
 
     // --- Event listeners ---
-    episodeSelect.addEventListener('change', (e) => {
+    episodeSelect.addEventListener('change', function(e) {
       const ep = e.target.value;
       if (!ep) return;
       currentEpisode = ep;
       currentPage = 1;
-      activeSegmentIdx = -1;
-      playerSection.style.display = 'none';
+      activeIdx = -1;
+      playerCard.classList.remove('visible');
       fetchSegments(ep, 1);
       fetchStats();
     });
 
-    pagePrev.addEventListener('click', () => {
+    pagePrev.addEventListener('click', function() {
       if (currentPage > 1) {
-        activeSegmentIdx = -1;
+        activeIdx = -1;
         fetchSegments(currentEpisode, currentPage - 1);
       }
     });
 
-    pageNext.addEventListener('click', () => {
+    pageNext.addEventListener('click', function() {
       if (currentPage < totalPages) {
-        activeSegmentIdx = -1;
+        activeIdx = -1;
         fetchSegments(currentEpisode, currentPage + 1);
       }
     });
 
-    btnPrev.addEventListener('click', () => {
-      if (activeSegmentIdx > 0) selectSegment(activeSegmentIdx - 1);
+    btnPrev.addEventListener('click', function() {
+      if (activeIdx > 0) selectSegment(activeIdx - 1);
     });
 
-    btnNext.addEventListener('click', () => {
-      if (activeSegmentIdx < segments.length - 1) selectSegment(activeSegmentIdx + 1);
+    btnNext.addEventListener('click', function() {
+      if (activeIdx < segments.length - 1) selectSegment(activeIdx + 1);
     });
 
-    tagButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
+    tagButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
         submitTag(btn.dataset.speaker);
       });
     });
 
-    noiseToggle.addEventListener('click', () => {
+    noiseToggle.addEventListener('click', function(e) {
+      e.preventDefault();
       noiseCheck.checked = !noiseCheck.checked;
       noiseToggle.classList.toggle('active', noiseCheck.checked);
     });
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      // Don't capture when typing in inputs
+    // --- Keyboard shortcuts ---
+    document.addEventListener('keydown', function(e) {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
       switch (e.key) {
@@ -1105,34 +1119,34 @@
           break;
         case ' ':
           e.preventDefault();
-          if (audioPlayer.paused) audioPlayer.play().catch(() => {});
+          if (audioPlayer.paused) audioPlayer.play().catch(function() {});
           else audioPlayer.pause();
           break;
         case 'r':
         case 'R':
           e.preventDefault();
           audioPlayer.currentTime = 0;
-          audioPlayer.play().catch(() => {});
+          audioPlayer.play().catch(function() {});
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (activeSegmentIdx > 0) selectSegment(activeSegmentIdx - 1);
+          if (activeIdx > 0) selectSegment(activeIdx - 1);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (activeSegmentIdx < segments.length - 1) selectSegment(activeSegmentIdx + 1);
+          if (activeIdx < segments.length - 1) selectSegment(activeIdx + 1);
           break;
         case 'ArrowLeft':
           e.preventDefault();
           if (currentPage > 1) {
-            activeSegmentIdx = -1;
+            activeIdx = -1;
             fetchSegments(currentEpisode, currentPage - 1);
           }
           break;
         case 'ArrowRight':
           e.preventDefault();
           if (currentPage < totalPages) {
-            activeSegmentIdx = -1;
+            activeIdx = -1;
             fetchSegments(currentEpisode, currentPage + 1);
           }
           break;
